@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">NoRootFirewall</string>
+    <string name="enable_firewall">Enable Firewall</string>
+    <string name="action_settings">Settings</string>
+
+</resources>
