@@ -7,7 +7,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -24,6 +23,14 @@ public class FirewallService extends VpnService implements Handler.Callback, Run
 
     private ParcelFileDescriptor mInterface;
     private String mParameters;
+
+    private String mServerAddress;
+
+    private String mServerPort;
+
+    private byte[] mSharedSecret;
+
+    private PendingIntent mConfigureIntent;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -52,9 +59,7 @@ public class FirewallService extends VpnService implements Handler.Callback, Run
 
     @Override
     public boolean handleMessage(Message message) {
-        if (message != null) {
-            Toast.makeText(this, message.what, Toast.LENGTH_SHORT).show();
-        }
+        // TODO
         return true;
     }
 
@@ -75,7 +80,7 @@ public class FirewallService extends VpnService implements Handler.Callback, Run
             // the network is avaiable. Here we just use a counter to keep
             // things simple.
             for (int attempt = 0; attempt < 10; ++attempt) {
-                mHandler.sendEmptyMessage(R.string.connecting);
+                mHandler.sendEmptyMessage(1); // R.string.connecting
 
                 // Reset the counter if we were connected.
                 if (run(server)) {
@@ -97,7 +102,7 @@ public class FirewallService extends VpnService implements Handler.Callback, Run
             mInterface = null;
             mParameters = null;
 
-            mHandler.sendEmptyMessage(R.string.disconnected);
+            mHandler.sendEmptyMessage(8); // disconnect
             Log.i(TAG, "Exiting");
         }
     }
@@ -126,7 +131,7 @@ public class FirewallService extends VpnService implements Handler.Callback, Run
 
             // Now we are connected. Set the flag and show the message.
             connected = true;
-            mHandler.sendEmptyMessage(R.string.connected);
+            mHandler.sendEmptyMessage(2); // R.string.connected
 
             // Packets to be sent are queued in this input stream.
             FileInputStream in = new FileInputStream(mInterface.getFileDescriptor());
