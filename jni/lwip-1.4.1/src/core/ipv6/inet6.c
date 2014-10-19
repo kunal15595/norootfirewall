@@ -41,9 +41,6 @@
 
 #include "lwip/def.h"
 #include "lwip/inet.h"
-/* ECS-project-change-begin */
-#include "lwip/pbuf.h"
-/* ECS-project-change-end */
 
 /* chksum:
  *

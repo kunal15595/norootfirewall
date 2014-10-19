@@ -20,37 +20,51 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef __LIB_LWIP_ARCH_CC_H
-#define __LIB_LWIP_ARCH_CC_H
 
-#include <stdint.h>
-#include <endian.h>
+#if defined(WITH_LIB_CONSOLE)
+#include <lib/console.h>
+
 #include <stdio.h>
-#include <compiler.h>
+#include <string.h>
+#include <lwip/api.h>
+#include <lwip/ip_addr.h>
 
-typedef uint8_t u8_t;
-typedef uint16_t u16_t;
-typedef uint32_t u32_t;
-typedef int8_t s8_t;
-typedef int16_t s16_t;
-typedef int32_t s32_t;
+static int net_cmd(int argc, const cmd_args *argv)
+{
+	if (argc < 2) {
+		printf("%s commands:\n", argv[0].str);
+usage:
+		printf("%s lookup <hostname>\n", argv[0].str);
+		goto out;
+	}
 
-typedef intptr_t mem_ptr_t;
+	if (!strcmp(argv[1].str, "lookup")) {
+		if (argc < 3)
+			goto usage;
 
-#define U16_F "u"
-#define S16_F "d"
-#define X16_F "x"
-#define U32_F "u"
-#define S32_F "d"
-#define X32_F "x"
-#define SZT_F "zu"
+		ip_addr_t ip_addr;
+		const char *hostname = argv[2].str;
+		err_t err;
 
-#define LWIP_CHKSUM_ALGORITHM 2
+		err = netconn_gethostbyname(hostname, &ip_addr);
+		if (err != ERR_OK) {
+			printf("Failed to resolve host: %d\n", err);
+		} else {
+			printf("%s: %u.%u.%u.%u\n", hostname,
+					ip4_addr1_16(&ip_addr),
+					ip4_addr2_16(&ip_addr),
+					ip4_addr3_16(&ip_addr),
+					ip4_addr4_16(&ip_addr));
+		}
+	}
 
-#define LWIP_PLATFORM_DIAG(x) do {} while (0)
-#define LWIP_PLATFORM_ASSERT(x) do {} while (0)
+out:
+	return 0;
+}
 
-#define PACK_STRUCT_STRUCT __PACKED
+STATIC_COMMAND_START
+{ "net", "net toolbox", &net_cmd },
+STATIC_COMMAND_END(net);
 
 #endif
 

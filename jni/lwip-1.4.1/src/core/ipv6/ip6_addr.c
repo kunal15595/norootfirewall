@@ -31,7 +31,7 @@
  */
 
 #include "lwip/opt.h"
-#include "lwip/ip_addr.h" /* ESC-change-note:"#include "ipv6/lwip/ip_addr.h"" */
+#include "lwip/ip_addr.h"
 #include "lwip/inet.h"
 
 u8_t

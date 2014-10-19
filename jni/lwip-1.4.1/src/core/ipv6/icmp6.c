@@ -37,9 +37,9 @@
 
 #if LWIP_ICMP /* don't build if not configured for use in lwipopts.h */
 
-#include "lwip/icmp.h" /* ESC-change-note:"#include "ipv6/lwip/icmp.h"" */
+#include "lwip/icmp.h"
 #include "lwip/inet.h"
-#include "lwip/ip.h" /* ESC-change-note:"#include "ipv6/lwip/ip.h"" */
+#include "lwip/ip.h"
 #include "lwip/def.h"
 #include "lwip/stats.h"
 

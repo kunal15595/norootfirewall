@@ -32,17 +32,13 @@
 #ifndef __LWIP_ARCH_H__
 #define __LWIP_ARCH_H__
 
-/* ESC-change-begin */
-/* Commented out the following two defs */
-/* conflicting to some system ones */
-//#ifndef LITTLE_ENDIAN
-//#define LITTLE_ENDIAN 1234
-//#endif
+#ifndef LITTLE_ENDIAN
+#define LITTLE_ENDIAN 1234
+#endif
 
-//#ifndef BIG_ENDIAN
-//#define BIG_ENDIAN 4321
-//#endif
-/* ESC-change-end */
+#ifndef BIG_ENDIAN
+#define BIG_ENDIAN 4321
+#endif
 
 #include "arch/cc.h"
 

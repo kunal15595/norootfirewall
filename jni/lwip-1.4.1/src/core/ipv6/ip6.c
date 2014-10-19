@@ -43,7 +43,7 @@
 
 #include "lwip/def.h"
 #include "lwip/mem.h"
-#include "lwip/ip.h" /* ESC-change-note:"#include "ipv6/lwip/ip.h"" */
+#include "lwip/ip.h"
 #include "lwip/inet.h"
 #include "lwip/netif.h"
 #include "lwip/icmp.h"

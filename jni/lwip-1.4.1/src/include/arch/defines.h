@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Corey Tabaka
+ * Copyright (c) 2008 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -20,37 +20,28 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef __LIB_LWIP_ARCH_CC_H
-#define __LIB_LWIP_ARCH_CC_H
+#ifndef __ARCH_CPU_H
+#define __ARCH_CPU_H
 
-#include <stdint.h>
-#include <endian.h>
-#include <stdio.h>
-#include <compiler.h>
+/* arm specific stuff */
+#define PAGE_SIZE 4096
 
-typedef uint8_t u8_t;
-typedef uint16_t u16_t;
-typedef uint32_t u32_t;
-typedef int8_t s8_t;
-typedef int16_t s16_t;
-typedef int32_t s32_t;
+#if ARM_CPU_ARM7
+/* irrelevant, no consistent cache */
+#define CACHE_LINE 32
+#elif ARM_CPU_ARM926
+#define CACHE_LINE 32
+#elif ARM_CPU_ARM1136
+#define CACHE_LINE 32
+#elif ARM_CPU_CORTEX_A8
+#define CACHE_LINE 64
+#elif ARM_CPU_CORTEX_M3 || ARM_CPU_CORTEX_M4
+#define CACHE_LINE 32 /* doesn't actually matter */
+#else
+#error unknown cpu
+#endif
 
-typedef intptr_t mem_ptr_t;
-
-#define U16_F "u"
-#define S16_F "d"
-#define X16_F "x"
-#define U32_F "u"
-#define S32_F "d"
-#define X32_F "x"
-#define SZT_F "zu"
-
-#define LWIP_CHKSUM_ALGORITHM 2
-
-#define LWIP_PLATFORM_DIAG(x) do {} while (0)
-#define LWIP_PLATFORM_ASSERT(x) do {} while (0)
-
-#define PACK_STRUCT_STRUCT __PACKED
+// TODO: #define ARCH_DEFAULT_STACK_SIZE 8192
 
 #endif
 
