@@ -26,9 +26,8 @@
 #include <sys/types.h>
 #include <list.h>
 #include <compiler.h>
-#include <arch/defines.h>
 #include <arch/ops.h>
-#include <arch/thread.h>
+//#include <arch/thread.h>
 #include <kernel/wait.h>
 #include <debug.h>
 
