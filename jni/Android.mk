@@ -43,6 +43,7 @@ LOCAL_SRC_FILES := \
 	./lwip-1.4.1/core/ipv4/ip.c \
 	./lwip-1.4.1/core/ipv4/ip_addr.c \
 	./lwip-1.4.1/core/ipv4/ip_frag.c \
+	./lwip-1.4.1/kernel/thread.c \
 	./NoRootFirewall.cpp
 
 LOCAL_LDLIBS := -llog

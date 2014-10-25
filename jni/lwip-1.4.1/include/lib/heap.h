@@ -20,26 +20,17 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef __ARCH_CPU_H
-#define __ARCH_CPU_H
+#ifndef __LIB_HEAP_H
+#define __LIB_HEAP_H
 
-/* arm specific stuff */
-#define PAGE_SIZE 4096
+#include <sys/types.h>
 
-#if ARM_CPU_ARM7
-/* irrelevant, no consistent cache */
-#define CACHE_LINE 32
-#elif ARM_CPU_ARM926
-#define CACHE_LINE 32
-#elif ARM_CPU_ARM1136
-#define CACHE_LINE 32
-#elif ARM_CPU_CORTEX_A8
-#define CACHE_LINE 64
-#elif ARM_CPU_CORTEX_M3 || ARM_CPU_CORTEX_M4
-#define CACHE_LINE 32 /* doesn't actually matter */
-#endif
+void *heap_alloc(size_t, unsigned int alignment);
+void heap_free(void *);
 
-#define ARCH_DEFAULT_STACK_SIZE 4096
+void heap_init(void);
+
+/* critical section time delayed free */
+void heap_delayed_free(void *);
 
 #endif
-

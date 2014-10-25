@@ -48,6 +48,12 @@
 #include "lwip/init.h"
 #include "netif/etharp.h"
 #include "netif/ppp_oe.h"
+#include <jni.h>
+#if defined(__arm__)
+#include "arch/arm/defines.h"
+#elif defined(__i386__)
+#include "arch/x86/defines.h"
+#endif
 
 /* global variables */
 static tcpip_init_done_fn tcpip_init_done;

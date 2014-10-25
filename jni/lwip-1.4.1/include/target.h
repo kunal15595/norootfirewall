@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 Travis Geiselbrecht
+ * Copyright (c) 2008-2012 Travis Geiselbrecht
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -20,26 +20,24 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef __ARCH_CPU_H
-#define __ARCH_CPU_H
+#ifndef __TARGET_H
+#define __TARGET_H
 
-/* arm specific stuff */
-#define PAGE_SIZE 4096
+#include <stdbool.h>
 
-#if ARM_CPU_ARM7
-/* irrelevant, no consistent cache */
-#define CACHE_LINE 32
-#elif ARM_CPU_ARM926
-#define CACHE_LINE 32
-#elif ARM_CPU_ARM1136
-#define CACHE_LINE 32
-#elif ARM_CPU_CORTEX_A8
-#define CACHE_LINE 64
-#elif ARM_CPU_CORTEX_M3 || ARM_CPU_CORTEX_M4
-#define CACHE_LINE 32 /* doesn't actually matter */
+/* super early platform initialization, before almost everything */
+void target_early_init(void);
+
+/* later init, after the kernel has come up */
+void target_init(void);
+
+/* a target can optionally define a set of debug leds that can be used
+ * in various locations in the system.
+ */
+#if TARGET_HAS_DEBUG_LED
+void target_set_debug_led(unsigned int led, bool on);
+#else
+#define target_set_debug_led(led, on) ((void)(0))
 #endif
 
-#define ARCH_DEFAULT_STACK_SIZE 4096
-
 #endif
-

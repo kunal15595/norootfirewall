@@ -20,26 +20,24 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef __ARCH_CPU_H
-#define __ARCH_CPU_H
+#ifndef __ASSERT_H
+#define __ASSERT_H
 
-/* arm specific stuff */
-#define PAGE_SIZE 4096
+#include <compiler.h>
+#include <debug.h>
 
-#if ARM_CPU_ARM7
-/* irrelevant, no consistent cache */
-#define CACHE_LINE 32
-#elif ARM_CPU_ARM926
-#define CACHE_LINE 32
-#elif ARM_CPU_ARM1136
-#define CACHE_LINE 32
-#elif ARM_CPU_CORTEX_A8
-#define CACHE_LINE 64
-#elif ARM_CPU_CORTEX_M3 || ARM_CPU_CORTEX_M4
-#define CACHE_LINE 32 /* doesn't actually matter */
+#define ASSERT(x) \
+    do { if (unlikely(!(x))) { panic("ASSERT FAILED at (%s:%d): %s\n", __FILE__, __LINE__, #x); } } while (0)
+
+#if LK_DEBUGLEVEL > 1
+#define DEBUG_ASSERT(x) \
+    do { if (unlikely(!(x))) { panic("DEBUG ASSERT FAILED at (%s:%d): %s\n", __FILE__, __LINE__, #x); } } while (0)
+#else
+#define DEBUG_ASSERT(x) \
+    do { } while(0)
 #endif
 
-#define ARCH_DEFAULT_STACK_SIZE 4096
+#define assert(e) DEBUG_ASSERT(e)
+#define static_assert(e) STATIC_ASSERT(e)
 
 #endif
-
