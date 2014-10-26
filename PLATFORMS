@@ -1,0 +1,78 @@
+omap5912
+
+ARCH := arm
+ARM_CPU := arm926ej-s
+CPU := generic
+
+===========================================================================================
+
+omap3
+
+ARCH := arm
+ARM_CPU := cortex-a8
+CPU := generic
+
+===========================================================================================
+
+pc
+
+ARCH := x86
+CPU := generic
+
+===========================================================================================
+
+am335x
+
+ARCH := arm
+ARM_CPU := cortex-a8
+CPU := generic
+
+===========================================================================================
+
+armemu
+
+ARCH := arm
+ARM_CPU := arm926ej-s
+CPU := generic
+
+===========================================================================================
+
+sam3
+
+ARCH := arm
+ARM_CPU := cortex-m3
+
+===========================================================================================
+
+stm32f2xx
+
+ARCH := arm
+ARM_CPU := cortex-m3
+
+===========================================================================================
+
+stm32f1xx
+
+ARCH := arm
+ARM_CPU := cortex-m3
+
+===========================================================================================
+
+realview-pb
+
+ARCH := arm
+ARM_CPU := cortex-a8
+
+===========================================================================================
+
+stellaris
+
+ARCH := arm
+
+===========================================================================================
+
+timer.c
+This file has implementations of methods which are diffferent for different archtectures.
+I am not sure I can write the right logic and compile it for an Android app. So I decided to
+use lwIP based on the project https://github.com/digitalsorcery/LWIPAndroidJNI or on 
+Andrey's implementation.
