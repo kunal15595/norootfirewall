@@ -73,6 +73,7 @@ LOCAL_SRC_FILES := \
 	./lwip-1.4.1/src/api/netifapi.c \
 	./lwip-1.4.1/src/api/netdb.c \
 	./lwip-1.4.1/src/api/sockets.c \
+	./lwip-1.4.1/src/sys_arch.c \
 	./NoRootFirewall.cpp
 
 LOCAL_LDLIBS := -llog
