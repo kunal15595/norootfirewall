@@ -47,6 +47,4 @@
 /* Minimal changes to opt.h required for etharp unit tests: */
 #define ETHARP_SUPPORT_STATIC_ENTRIES   1
 
-#define SYS_LIGHTWEIGHT_PROT 1
-
 #endif /* __LWIPOPTS_H__ */

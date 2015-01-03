@@ -23,7 +23,8 @@ typedef intptr_t mem_ptr_t;
 #define X32_F "x"
 #define SZT_F "uz"
 
-#if BYTE_ORDER == LITTLE_ENDIAN
+#if _BYTE_ORDER == _LITTLE_ENDIAN
+#define BYTE_ORDER LITTLE_ENDIAN
 #define LWIP_PLATFORM_BYTESWAP 1
 #define LWIP_PLATFORM_HTONS(x) ( (((u16_t)(x))>>8) | (((x)&0xFF)<<8) )
 #define LWIP_PLATFORM_HTONL(x) ( (((u32_t)(x))>>24) | (((x)&0xFF0000)>>8) \
@@ -33,7 +34,7 @@ typedef intptr_t mem_ptr_t;
 #define LWIP_CHKSUM_ALGORITHM 2
 
 /* Compiler hints for packing structures */
-#define PACK_STRUCT_FIELD(x) x __attribute__((packed))
+#define PACK_STRUCT_FIELD(x) x
 #define PACK_STRUCT_STRUCT __attribute__((packed))
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
