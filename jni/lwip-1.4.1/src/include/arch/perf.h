@@ -26,25 +26,38 @@
  *
  * This file is part of the lwIP TCP/IP stack.
  * 
- * Author: Simon Goldschmidt
+ * Author: Adam Dunkels <adam@sics.se>
  *
  */
-#ifndef __LWIPOPTS_H__
-#define __LWIPOPTS_H__
+#ifndef __ARCH_PERF_H__
+#define __ARCH_PERF_H__
 
-/* Prevent having to link sys_arch.c (we don't test the API layers in unit tests) */
-#define NO_SYS                          1
-#define LWIP_NETCONN                    0
-#define LWIP_SOCKET                     0
+#include <sys/times.h>
 
-/* Minimal changes to opt.h required for tcp unit tests: */
-#define MEM_SIZE                        16000
-#define TCP_SND_QUEUELEN                40
-#define MEMP_NUM_TCP_SEG                TCP_SND_QUEUELEN
-#define TCP_SND_BUF                     (12 * TCP_MSS)
-#define TCP_WND                         (10 * TCP_MSS)
+#ifdef PERF
+#define PERF_START  { \
+                         unsigned long __c1l, __c1h, __c2l, __c2h; \
+                         __asm__(".byte 0x0f, 0x31" : "=a" (__c1l), "=d" (__c1h))
+#define PERF_STOP(x)   __asm__(".byte 0x0f, 0x31" : "=a" (__c2l), "=d" (__c2h)); \
+                       perf_print(__c1l, __c1h, __c2l, __c2h, x);}
 
-/* Minimal changes to opt.h required for etharp unit tests: */
-#define ETHARP_SUPPORT_STATIC_ENTRIES   1
+/*#define PERF_START do { \
+                     struct tms __perf_start, __perf_end; \
+                     times(&__perf_start)
+#define PERF_STOP(x) times(&__perf_end); \
+                     perf_print_times(&__perf_start, &__perf_end, x);\
+                     } while(0)*/
+#else /* PERF */
+#define PERF_START    /* null definition */
+#define PERF_STOP(x)  /* null definition */
+#endif /* PERF */
 
-#endif /* __LWIPOPTS_H__ */
+void perf_print(unsigned long c1l, unsigned long c1h,
+		unsigned long c2l, unsigned long c2h,
+		char *key);
+
+void perf_print_times(struct tms *start, struct tms *end, char *key);
+
+void perf_init(char *fname);
+
+#endif /* __ARCH_PERF_H__ */

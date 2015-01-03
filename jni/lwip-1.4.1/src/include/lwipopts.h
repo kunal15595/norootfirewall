@@ -1,0 +1,6 @@
+#ifndef LWIP_1_4_1_SRC_INCLUDE_LWIPORTS_H_
+#define LWIP_1_4_1_SRC_INCLUDE_LWIPORTS_H_
+
+#define SYS_LIGHTWEIGHT_PROT           1
+
+#endif

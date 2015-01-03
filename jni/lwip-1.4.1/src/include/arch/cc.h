@@ -34,7 +34,7 @@ typedef intptr_t mem_ptr_t;
 #define LWIP_CHKSUM_ALGORITHM 2
 
 /* Compiler hints for packing structures */
-#define PACK_STRUCT_FIELD(x) x __attribute__((packed))
+#define PACK_STRUCT_FIELD(x) x
 #define PACK_STRUCT_STRUCT __attribute__((packed))
 #define PACK_STRUCT_BEGIN
 #define PACK_STRUCT_END
