@@ -29,10 +29,6 @@ LOCAL_SRC_FILES := \
 	./lwip-1.4.1/src/core/ipv4/ip.c \
 	./lwip-1.4.1/src/core/ipv4/ip_addr.c \
 	./lwip-1.4.1/src/core/ipv4/ip_frag.c \
-	./lwip-1.4.1/src/core/ipv6/icmp6.c \
-	./lwip-1.4.1/src/core/ipv6/inet6.c \
-	./lwip-1.4.1/src/core/ipv6/ip6.c \
-	./lwip-1.4.1/src/core/ipv6/ip6_addr.c \
 	./lwip-1.4.1/src/core/mem.c \
 	./lwip-1.4.1/src/core/memp.c \
 	./lwip-1.4.1/src/core/netif.c \
