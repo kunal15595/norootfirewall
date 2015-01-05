@@ -24,7 +24,7 @@
         </activity>
 
         <service
-            android:name=".FirewallService"
+            android:name=".NoRootFwService"
             android:permission="android.permission.BIND_VPN_SERVICE" >
             <intent-filter>
                 <action android:name="android.net.VpnService" />
