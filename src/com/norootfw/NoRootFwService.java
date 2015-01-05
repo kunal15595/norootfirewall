@@ -9,7 +9,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 public class NoRootFwService extends VpnService implements Runnable {
 
@@ -66,9 +65,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             while (true) {
                 final int read = in.read(byteBuffer.array());
                 if (read > 0) {
-                    Log.d(TAG, Arrays.toString(byteBuffer.array()));
-                    final int payloadLength = IPPacketUtils.getPayloadLength(byteBuffer.array());
-                    NoRootFwNative.ip_input(byteBuffer.array(), payloadLength);
+                    NoRootFwNative.ip_input(byteBuffer.array(), IPPacketUtils.getPayloadLength(byteBuffer.array()));
                 }
             }
         } catch (IOException e) {

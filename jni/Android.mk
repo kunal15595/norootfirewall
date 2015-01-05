@@ -5,6 +5,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := lwip
 
 LOCAL_C_INCLUDES := \
+    $(LOCAL_PATH)/include \
 	$(LOCAL_PATH)/lwip-1.4.1/src/include \
 	$(LOCAL_PATH)/lwip-1.4.1/src/include/ipv4
 
