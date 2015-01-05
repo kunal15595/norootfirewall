@@ -10,10 +10,10 @@ extern "C" {
 /*
  * Class:     com_norootfw_NoRootFwNative
  * Method:    ip_input
- * Signature: ([B)I
+ * Signature: ([BI)I
  */
 JNIEXPORT jint JNICALL Java_com_norootfw_NoRootFwNative_ip_1input
-  (JNIEnv *, jclass, jbyteArray);
+  (JNIEnv *, jclass, jbyteArray, jint);
 
 #ifdef __cplusplus
 }

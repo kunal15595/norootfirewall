@@ -9,8 +9,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class NoRootFwService extends VpnService implements Runnable {
+
+    private static final int IP_PACKET_MAX_LENGTH = 65535;
 
     static {
         System.loadLibrary("lwip");
@@ -59,17 +62,13 @@ public class NoRootFwService extends VpnService implements Runnable {
             Log.i(TAG, "Starting");
             in = new FileInputStream(mInterface.getFileDescriptor());
             out = new FileOutputStream(mInterface.getFileDescriptor());
-            /*
-             * It's safe because the max. packet size is 65,535 bytes.
-             * 
-             * Maxim Dmitriev
-             * January 5, 2014
-             */
-            ByteBuffer byteBuffer = ByteBuffer.allocate((int) in.getChannel().size());
+            ByteBuffer byteBuffer = ByteBuffer.allocate(IP_PACKET_MAX_LENGTH);
             while (true) {
-                final int packetLength = in.read(byteBuffer.array());
-                if (packetLength > 0) {
-
+                final int read = in.read(byteBuffer.array());
+                if (read > 0) {
+                    Log.d(TAG, Arrays.toString(byteBuffer.array()));
+                    final int payloadLength = IPPacketUtils.getPayloadLength(byteBuffer.array());
+                    NoRootFwNative.ip_input(byteBuffer.array(), payloadLength);
                 }
             }
         } catch (IOException e) {
@@ -94,6 +93,47 @@ public class NoRootFwService extends VpnService implements Runnable {
             }
             mInterface = null;
             Log.i(TAG, "Exiting");
+        }
+    }
+
+    private static class IPPacketUtils {
+
+        static final int IHL_MASK = 0x0f;
+
+        private IPPacketUtils() {
+            throw new AssertionError();
+        }
+
+        /**
+         * It <i>does not</i> return the array size. It returns the size of the IP packet in the
+         * array.
+         * 
+         * @param array
+         * @return
+         */
+        static int getTotalLength(byte[] array) {
+            int length = array[2] << 8;
+            length += array[3];
+            return length;
+        }
+
+        /**
+         * Header length in bytes
+         * 
+         * @return
+         */
+        static int getHeaderLength(byte[] packet) {
+            /*
+             * We multiply the number of 32-bit words by 4 to get the number of bytes.
+             * 
+             * Maxim Dmitriev
+             * January 5, 2015
+             */
+            return (packet[0] & IHL_MASK) * 4;
+        }
+
+        static int getPayloadLength(byte[] packet) {
+            return getTotalLength(packet) - getHeaderLength(packet);
         }
     }
 }
