@@ -56,6 +56,8 @@
 #include "lwip/sys.h"
 #include "lwip/opt.h"
 #include "lwip/stats.h"
+#include <android/log.h>
+#include <semaphore.h>
 
 #define UMAX(a, b)      ((a) > (b) ? (a) : (b))
 
@@ -86,6 +88,9 @@ struct sys_sem {
   pthread_cond_t cond;
   pthread_mutex_t mutex;
 };
+// TODO: typedef sem_t sys_sem; Their implementation doesn't mention Android's semaphore
+// Maksim Dmitriev
+// January 6, 2015
 
 struct sys_thread {
   struct sys_thread *next;
@@ -416,6 +421,22 @@ sys_arch_sem_wait(struct sys_sem **s, u32_t timeout)
 {
   u32_t time_needed = 0;
   struct sys_sem *sem;
+  if (s == NULL)
+  {
+	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "s == NULL");
+  }
+  else
+  {
+	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "s != NULL");
+  }
+  if (*s == NULL)
+  {
+	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "*s == NULL"); // It causes the failure
+  }
+  else
+  {
+	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "*s != NULL");
+  }
   LWIP_ASSERT("invalid sem", (s != NULL) && (*s != NULL));
   sem = *s;
 
