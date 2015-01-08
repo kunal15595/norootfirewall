@@ -13,8 +13,13 @@ JNIEXPORT jint JNICALL Java_com_norootfw_NoRootFwNative_ip_1input(JNIEnv *env,
 	 */
 	mem_init();
 	struct pbuf *buf = pbuf_alloc(PBUF_LINK, payload_length, PBUF_RAM);
-	// TODO: I probably should call mem_free() here.
-	// Maksim Dmitriev
-	// January 8, 2015
+	/*
+	 * Should I call mem_free() here?
+	 * Now I'm not sure. I thought I should call it to release the semaphore which is created in
+	 * mem_init(), but a function releasing a semaphore is not explicitly called in mem_free()
+	 *
+	 * Maksim Dmitriev
+	 * January 8, 2015
+	 */
 	return 0;
 }

@@ -65,7 +65,8 @@ public class NoRootFwService extends VpnService implements Runnable {
             while (true) {
                 final int read = in.read(byteBuffer.array());
                 if (read > 0) {
-                    NoRootFwNative.ip_input(byteBuffer.array(), IPPacketUtils.getPayloadLength(byteBuffer.array()));
+                    IPPacket.PACKET.setPacket(byteBuffer.array());
+                    NoRootFwNative.ip_input(byteBuffer.array(), IPPacket.PACKET.getPayloadLength());
                 }
             }
         } catch (IOException e) {
@@ -93,12 +94,39 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
     }
 
-    private static class IPPacketUtils {
+    /**
+     * The implementation of an IP packet is designed as a single-element enum to ensure that there
+     * is only one instance of the IP packet.
+     * <br />
+     * <ul>
+     * <li>All the TCP_XXX_ELEMENT positions are relative to the beginning of a TCP header.</li>
+     * </ul>
+     *
+     * @author Maksim Dmitriev
+     *
+     */
+    private static enum IPPacket {
+
+        PACKET;
 
         static final int IHL_MASK = 0x0f;
+        static final int TCP_FLAGS_MASK = 0x02;
+        /**
+         * The index of the octet of a TCP header where the size of the TCP header is stored;
+         */
+        static int TCP_DATA_OFFSET_ELEMENT = 12;
+        /**
+         * The index of the octet of the TCP header where the flags, such as SYN, ACK, are stored.
+         */
+        static int TCP_FLAGS_ELEMENT = 13;
+        byte[] mPacket;
 
-        private IPPacketUtils() {
-            throw new AssertionError();
+        void setPacket(byte[] packet) {
+            /*
+             * I don't think there is a memory leak; therefore, I don't null out mPacket before
+             * assigning a new value.
+             */
+            mPacket = packet;
         }
 
         /**
@@ -108,9 +136,9 @@ public class NoRootFwService extends VpnService implements Runnable {
          * @param array
          * @return
          */
-        static int getTotalLength(byte[] array) {
-            int length = array[2] << 8;
-            length += array[3];
+        int getTotalLength() {
+            int length = mPacket[2] << 8;
+            length += mPacket[3];
             return length;
         }
 
@@ -119,18 +147,44 @@ public class NoRootFwService extends VpnService implements Runnable {
          * 
          * @return
          */
-        static int getHeaderLength(byte[] packet) {
+        int getIpHeaderLength() {
             /*
              * We multiply the number of 32-bit words by 4 to get the number of bytes.
              * 
              * Maxim Dmitriev
              * January 5, 2015
              */
-            return (packet[0] & IHL_MASK) * 4;
+            return (mPacket[0] & IHL_MASK) * 4;
         }
 
-        static int getPayloadLength(byte[] packet) {
-            return getTotalLength(packet) - getHeaderLength(packet);
+        int getTcpHeaderLength() {
+            final int tcpHeaderStart = getIpHeaderLength();
+            final int dataOffsetOctet = tcpHeaderStart + TCP_DATA_OFFSET_ELEMENT;
+            /*
+             * Why do we shift to the right 4 times? Because the value we are interested in is
+             * stored in 4 high-order bits.
+             *
+             * Why do we multiply the result by 4? Because the value stored in the 4 high-order bytes
+             * is the size of the TCP header in 32-bit words, and we need the result in bytes.
+             *
+             * Maksim Dmitriev
+             * January 8, 2015
+             */
+            return (mPacket[dataOffsetOctet] >>> 4) * 4;
+        }
+
+        /**
+         * Payload without TCP and IP headers
+         *
+         * @return
+         */
+        int getPayloadLength() {
+            return getTotalLength() - getIpHeaderLength() - getTcpHeaderLength();
+        }
+
+        boolean isSyn() {
+            return (mPacket[getIpHeaderLength() + TCP_FLAGS_ELEMENT] & TCP_FLAGS_MASK) != 0;
+
         }
     }
 }
