@@ -421,22 +421,6 @@ sys_arch_sem_wait(struct sys_sem **s, u32_t timeout)
 {
   u32_t time_needed = 0;
   struct sys_sem *sem;
-  if (s == NULL)
-  {
-	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "s == NULL");
-  }
-  else
-  {
-	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "s != NULL");
-  }
-  if (*s == NULL)
-  {
-	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "*s == NULL"); // It causes the failure
-  }
-  else
-  {
-	  __android_log_print(ANDROID_LOG_DEBUG, "NoRootFwService", "*s != NULL");
-  }
   LWIP_ASSERT("invalid sem", (s != NULL) && (*s != NULL));
   sem = *s;
 
