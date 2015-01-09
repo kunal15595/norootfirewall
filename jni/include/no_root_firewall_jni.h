@@ -9,10 +9,10 @@ extern "C" {
 #endif
 /*
  * Class:     com_norootfw_NoRootFwNative
- * Method:    ip_input
- * Signature: ([BI)I
+ * Method:    sendSyn
+ * Signature: ([BI)[B
  */
-JNIEXPORT jint JNICALL Java_com_norootfw_NoRootFwNative_ip_1input
+JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendSyn
   (JNIEnv *, jclass, jbyteArray, jint);
 
 #ifdef __cplusplus

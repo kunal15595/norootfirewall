@@ -2,6 +2,12 @@ package com.norootfw;
 
 class NoRootFwNative {
 
-    static native int ip_input(byte[] packet, int payloadLength);
+    /**
+     *
+     * @param packet an IP packet with the SYN flag
+     * @param payloadLength
+     * @return an IP packet with SYN+ACK which is returned by lwIP
+     */
+    static native byte[] sendSyn(byte[] packet, int payloadLength);
 
 }

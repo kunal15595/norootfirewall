@@ -3,10 +3,9 @@
 #include "lwip/pbuf.h"
 #include "lwip/mem.h"
 
-JNIEXPORT jint JNICALL Java_com_norootfw_NoRootFwNative_ip_1input(JNIEnv *env,
-		jclass clazz, jbyteArray packet, jint payload_length) {
-	/*
-	 * PBUF ROM pbufs are used when an application sends data that is
+JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendSyn(
+		JNIEnv *env, jclass clazz, jbyteArray packet, jint payload_length) {
+	/* PBUF ROM pbufs are used when an application sends data that is
 	 located in memory managed by the application.
 
 	 Design and Implementation of the lwIP TCP/IP Stack.
@@ -16,10 +15,11 @@ JNIEXPORT jint JNICALL Java_com_norootfw_NoRootFwNative_ip_1input(JNIEnv *env,
 	/*
 	 * Should I call mem_free() here?
 	 * Now I'm not sure. I thought I should call it to release the semaphore which is created in
-	 * mem_init(), but a function releasing a semaphore is not explicitly called in mem_free()
+	 * mem_init(), but a function releasing a semaphore is not explicitly called in mem_free().
+	 * However, I should guarantee that the semaphore opened in mem_init() is finally released.
 	 *
 	 * Maksim Dmitriev
 	 * January 8, 2015
 	 */
-	return 0;
+	return NULL;
 }

@@ -66,7 +66,20 @@ public class NoRootFwService extends VpnService implements Runnable {
                 final int read = in.read(byteBuffer.array());
                 if (read > 0) {
                     IPPacket.PACKET.setPacket(byteBuffer.array());
-                    NoRootFwNative.ip_input(byteBuffer.array(), IPPacket.PACKET.getPayloadLength());
+                    /*
+                     * TODO: Move the next line inside IPPacket.PACKET.isSyn() after you find out
+                     * the sequence of steps which are taken. I used to think that DNS requests are
+                     * not performed, but it turned out they were.
+                     *
+                     * Maksim Dmitriev
+                     * January 9, 2015
+                     */
+                    NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
+                    if (IPPacket.PACKET.isSyn()) {
+
+                    } else {
+                        Log.d(TAG, "Not SYN");
+                    }
                 }
             }
         } catch (IOException e) {
@@ -99,7 +112,8 @@ public class NoRootFwService extends VpnService implements Runnable {
      * is only one instance of the IP packet.
      * <br />
      * <ul>
-     * <li>All the TCP_XXX_ELEMENT positions are relative to the beginning of a TCP header.</li>
+     * <li>All the TCP_XXX_INDEX positions are relative to the beginning of a TCP header.</li>
+     * <li>All the IP_XXX_INDEX positions are relative to the beginning of an IP header.</li>
      * </ul>
      *
      * @author Maksim Dmitriev
@@ -109,16 +123,25 @@ public class NoRootFwService extends VpnService implements Runnable {
 
         PACKET;
 
-        static final int IHL_MASK = 0x0f;
-        static final int TCP_FLAGS_MASK = 0x02;
         /**
-         * The index of the octet of a TCP header where the size of the TCP header is stored;
+         * We multiply the number of 32-bit words by 4 to get the number of bytes.
          */
-        static int TCP_DATA_OFFSET_ELEMENT = 12;
+        static final int BIT_WORD_TO_BYTE_MULTIPLIER = 4;
+        static final int IHL_MASK = 0x0f;
+        static final int TCP_FLAGS_SYN_MASK = 0x02;
+        static final int INTEGER_COMPLEMENT = 256;
+        /**
+         * The index of the octet of the TCP header where the size of the TCP header is stored;
+         */
+        static int TCP_DATA_OFFSET_INDEX = 12;
         /**
          * The index of the octet of the TCP header where the flags, such as SYN, ACK, are stored.
          */
-        static int TCP_FLAGS_ELEMENT = 13;
+        static int TCP_FLAGS_INDEX = 13;
+        static int IP_HEADER_LENGTH_INDEX = 0;
+        static int IP_TOTAL_LENGTH_HIGH_BYTE_INDEX = 2;
+        static int IP_TOTAL_LENGTH_LOW_BYTE_INDEX = 3;
+
         byte[] mPacket;
 
         void setPacket(byte[] packet) {
@@ -129,48 +152,76 @@ public class NoRootFwService extends VpnService implements Runnable {
             mPacket = packet;
         }
 
+        byte[] getPacket() {
+            return mPacket;
+        }
+
         /**
          * It <i>does not</i> return the array size. It returns the size of the IP packet in the
          * array.
          * 
-         * @param array
          * @return
          */
         int getTotalLength() {
-            int length = mPacket[2] << 8;
-            length += mPacket[3];
+            int length = convertByteToPositiveInt(mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX]) << 8;
+            length += convertByteToPositiveInt(mPacket[IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
             return length;
         }
 
         /**
-         * Header length in bytes
+         * Since byte is a signed type in Java, its positive value cannot be greater than 127.
          * 
+         * @param value
          * @return
          */
+        int convertByteToPositiveInt(byte value) {
+            return value >= 0 ? value : value + INTEGER_COMPLEMENT;
+        }
+
+        /**
+         * Header length in bytes. In this case we don't have to call
+         * {@link #convertByteToPositiveInt(byte)} after applying {@link #IHL_MASK} to ensure that
+         * a positive number will be multiplied by {@link #BIT_WORD_TO_BYTE_MULTIPLIER}.
+         * <br>
+         * <br>
+         * Consider the following example.
+         * <br>
+         * <br>
+         * 00010110 = 22<br>
+         * The ones' complement:<br>
+         * 11101001<br>
+         * The twos' complement = the ones' complement + 1:<br>
+         * 11101001 +<br>
+         * 00000001 =<br>
+         * 11101010 = -22
+         * 
+         * <br>
+         * <br>
+         * So a negative number's high-order bit is always equal to 1, and this bit as well as four
+         * high-order bits will always
+         * be equal to 0 because the mask we apply in the bitwise AND is equal to 6 = 00000110.<br>
+         * 
+         * @return the IP header length in bytes
+         */
         int getIpHeaderLength() {
-            /*
-             * We multiply the number of 32-bit words by 4 to get the number of bytes.
-             * 
-             * Maxim Dmitriev
-             * January 5, 2015
-             */
-            return (mPacket[0] & IHL_MASK) * 4;
+            return (mPacket[IP_HEADER_LENGTH_INDEX] & IHL_MASK) * BIT_WORD_TO_BYTE_MULTIPLIER;
         }
 
         int getTcpHeaderLength() {
             final int tcpHeaderStart = getIpHeaderLength();
-            final int dataOffsetOctet = tcpHeaderStart + TCP_DATA_OFFSET_ELEMENT;
+            final int dataOffsetOctet = tcpHeaderStart + TCP_DATA_OFFSET_INDEX;
             /*
              * Why do we shift to the right 4 times? Because the value we are interested in is
              * stored in 4 high-order bits.
-             *
-             * Why do we multiply the result by 4? Because the value stored in the 4 high-order bytes
+             * 
+             * Why do we multiply the result by 4? Because the value stored in the 4 high-order
+             * bytes
              * is the size of the TCP header in 32-bit words, and we need the result in bytes.
-             *
+             * 
              * Maksim Dmitriev
              * January 8, 2015
              */
-            return (mPacket[dataOffsetOctet] >>> 4) * 4;
+            return (convertByteToPositiveInt(mPacket[dataOffsetOctet]) >>> 4) * 4;
         }
 
         /**
@@ -183,7 +234,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
 
         boolean isSyn() {
-            return (mPacket[getIpHeaderLength() + TCP_FLAGS_ELEMENT] & TCP_FLAGS_MASK) != 0;
+            return (mPacket[getIpHeaderLength() + TCP_FLAGS_INDEX] & TCP_FLAGS_SYN_MASK) != 0;
 
         }
     }
