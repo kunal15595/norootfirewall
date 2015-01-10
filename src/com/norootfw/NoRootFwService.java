@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class NoRootFwService extends VpnService implements Runnable {
 
@@ -67,19 +68,20 @@ public class NoRootFwService extends VpnService implements Runnable {
                 if (read > 0) {
                     IPPacket.PACKET.setPacket(byteBuffer.array());
                     /*
-                     * TODO: Move the next line inside IPPacket.PACKET.isSyn() after you find out
-                     * the sequence of steps which are taken. I used to think that DNS requests are
+                     * I used to think that DNS requests are
                      * not performed, but it turned out they were.
-                     *
+                     * 
                      * Maksim Dmitriev
                      * January 9, 2015
                      */
-                    NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
-                    if (IPPacket.PACKET.isSyn()) {
-
-                    } else {
-                        Log.d(TAG, "Not SYN");
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "DST port: " + IPPacket.PACKET.getDstPort() + " TCP flags: " +
+                                IPPacket.PACKET.getPacket()[IPPacket.PACKET.getIpHeaderLength() + IPPacket.TCP_FLAGS_INDEX] +
+                                " SRC: " + IPPacket.PACKET.getSrcIpAddressAsString() +
+                                " DST: " + IPPacket.PACKET.getDstIpAddressAsString());
                     }
+                    NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(),
+                            IPPacket.PACKET.getPayloadLength());
                 }
             }
         } catch (IOException e) {
@@ -138,9 +140,23 @@ public class NoRootFwService extends VpnService implements Runnable {
          * The index of the octet of the TCP header where the flags, such as SYN, ACK, are stored.
          */
         static int TCP_FLAGS_INDEX = 13;
+        static int TCP_DST_PORT_HIGH_BYTE_INDEX = 2;
+        static int TCP_DST_PORT_LOW_BYTE_INDEX = 3;
+
+        /**
+         * The number of bytes needed to store an IP address
+         */
+        static int IP_ADDRESS_LENGTH = 4;
         static int IP_HEADER_LENGTH_INDEX = 0;
         static int IP_TOTAL_LENGTH_HIGH_BYTE_INDEX = 2;
         static int IP_TOTAL_LENGTH_LOW_BYTE_INDEX = 3;
+        static int IP_SRC_IP_ADDRESS_INDEX = 12;
+        static int IP_DST_IP_ADDRESS_INDEX = 16;
+
+        static final String DOT = ".";
+
+        // Destination ports
+        static final int DST_PORT_DNS = 53;
 
         byte[] mPacket;
 
@@ -163,9 +179,14 @@ public class NoRootFwService extends VpnService implements Runnable {
          * @return
          */
         int getTotalLength() {
-            int length = convertByteToPositiveInt(mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX]) << 8;
-            length += convertByteToPositiveInt(mPacket[IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
-            return length;
+            return convertMultipleBytesToPositiveInt(mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX],
+                    mPacket[IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
+        }
+
+        private int convertMultipleBytesToPositiveInt(byte... bytes) {
+            int value = convertByteToPositiveInt(bytes[0]) << 8;
+            value += convertByteToPositiveInt(bytes[1]);
+            return value;
         }
 
         /**
@@ -174,7 +195,7 @@ public class NoRootFwService extends VpnService implements Runnable {
          * @param value
          * @return
          */
-        int convertByteToPositiveInt(byte value) {
+        private int convertByteToPositiveInt(byte value) {
             return value >= 0 ? value : value + INTEGER_COMPLEMENT;
         }
 
@@ -235,7 +256,41 @@ public class NoRootFwService extends VpnService implements Runnable {
 
         boolean isSyn() {
             return (mPacket[getIpHeaderLength() + TCP_FLAGS_INDEX] & TCP_FLAGS_SYN_MASK) != 0;
+        }
 
+        private byte[] getIpAddress(int startIndex) {
+            return Arrays.copyOfRange(mPacket, startIndex, startIndex + IP_ADDRESS_LENGTH);
+        }
+
+        /**
+         * 
+         * @return The IPv4 address in dot-decimal notation
+         */
+        private String getIpAddressAsAstring(int startIndex) {
+            byte[] addressAsBytes = getIpAddress(startIndex);
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < addressAsBytes.length; i++) {
+                builder.append(convertByteToPositiveInt(addressAsBytes[i]));
+                if (i != addressAsBytes.length - 1) {
+                    builder.append(DOT);
+                }
+            }
+            return builder.toString();
+        }
+
+        String getSrcIpAddressAsString() {
+            return getIpAddressAsAstring(IP_SRC_IP_ADDRESS_INDEX);
+        }
+
+        String getDstIpAddressAsString() {
+            return getIpAddressAsAstring(IP_DST_IP_ADDRESS_INDEX);
+        }
+
+        int getDstPort() {
+            final int tcpHeaderStart = getIpHeaderLength();
+            return convertMultipleBytesToPositiveInt(
+                    mPacket[tcpHeaderStart + TCP_DST_PORT_HIGH_BYTE_INDEX],
+                    mPacket[tcpHeaderStart + TCP_DST_PORT_LOW_BYTE_INDEX]);
         }
     }
 }

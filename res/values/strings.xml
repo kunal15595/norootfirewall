@@ -3,6 +3,7 @@
 
     <string name="app_name">NoRootFirewall</string>
     <string name="enable_firewall">Enable Firewall</string>
+    <string name="send_test_request">Send Test Request</string>
     <string name="action_settings">Settings</string>
 
 </resources>
