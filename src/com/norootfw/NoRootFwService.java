@@ -14,6 +14,7 @@ import java.util.Arrays;
 public class NoRootFwService extends VpnService implements Runnable {
 
     private static final int IP_PACKET_MAX_LENGTH = 65535;
+    private volatile boolean mServiceRun;
 
     static {
         System.loadLibrary("lwip");
@@ -26,11 +27,7 @@ public class NoRootFwService extends VpnService implements Runnable {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Stop the previous session by interrupting the thread.
-        if (mThread != null) {
-            mThread.interrupt();
-        }
-
+        stopCapturingPackets();
         // Start a new session by creating a new thread.
         mThread = new Thread(this, "FirewallThread");
         mThread.start();
@@ -39,14 +36,19 @@ public class NoRootFwService extends VpnService implements Runnable {
 
     @Override
     public void onDestroy() {
+        stopCapturingPackets();
+    }
+
+    private void stopCapturingPackets() {
+        mServiceRun = false;
         if (mThread != null) {
             mThread.interrupt();
         }
     }
 
     @Override
-    public synchronized void run() {
-        mInterface = new Builder().setSession("FIREWALL_NAME")
+    public void run() {
+        mInterface = new Builder().setSession(getString(R.string.app_name))
                 .addAddress(TUN_DEVICE_ADDRESS, 24)
                 .addRoute("0.0.0.0", 1)
                 .addRoute("128.0.0.0", 1)
@@ -54,6 +56,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         if (mInterface == null) {
             throw new RuntimeException("Failed to create a TUN interface");
         }
+        mServiceRun = true;
         // Packets to be sent are queued in this input stream.
         FileInputStream in = null;
         // Packets received need to be written to this output stream.
@@ -63,7 +66,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             in = new FileInputStream(mInterface.getFileDescriptor());
             out = new FileOutputStream(mInterface.getFileDescriptor());
             ByteBuffer byteBuffer = ByteBuffer.allocate(IP_PACKET_MAX_LENGTH);
-            while (true) {
+            while (mServiceRun) {
                 final int read = in.read(byteBuffer.array());
                 if (read > 0) {
                     IPPacket.PACKET.setPacket(byteBuffer.array());
@@ -75,8 +78,12 @@ public class NoRootFwService extends VpnService implements Runnable {
                      * January 9, 2015
                      */
                     if (BuildConfig.DEBUG) {
-                        Log.d(TAG, "DST port: " + IPPacket.PACKET.getDstPort() + " TCP flags: " +
-                                IPPacket.PACKET.getPacket()[IPPacket.PACKET.getIpHeaderLength() + IPPacket.TCP_FLAGS_INDEX] +
+                        final byte protocol = IPPacket.PACKET.getProtocol();
+                        Log.d(TAG, "DST port: " + IPPacket.PACKET.getDstPort() +
+                                " Transport-layer protocol: " + protocol +
+                                (protocol == IPPacket.TRANSPORT_PROTOCOL_TCP ?
+                                        " TCP flags: " +
+                                                IPPacket.PACKET.getPacket()[IPPacket.PACKET.getIpHeaderLength() + IPPacket.TCP_FLAGS_INDEX] : "") +
                                 " SRC: " + IPPacket.PACKET.getSrcIpAddressAsString() +
                                 " DST: " + IPPacket.PACKET.getDstIpAddressAsString());
                     }
@@ -150,10 +157,15 @@ public class NoRootFwService extends VpnService implements Runnable {
         static int IP_HEADER_LENGTH_INDEX = 0;
         static int IP_TOTAL_LENGTH_HIGH_BYTE_INDEX = 2;
         static int IP_TOTAL_LENGTH_LOW_BYTE_INDEX = 3;
+        static int IP_PROTOCOL_FIELD = 9;
         static int IP_SRC_IP_ADDRESS_INDEX = 12;
         static int IP_DST_IP_ADDRESS_INDEX = 16;
 
         static final String DOT = ".";
+
+        // Transport-layer protocols
+        static byte TRANSPORT_PROTOCOL_TCP = 6;
+        static byte TRANSPORT_PROTOCOL_UDP = 17;
 
         // Destination ports
         static final int DST_PORT_DNS = 53;
@@ -181,6 +193,10 @@ public class NoRootFwService extends VpnService implements Runnable {
         int getTotalLength() {
             return convertMultipleBytesToPositiveInt(mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX],
                     mPacket[IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
+        }
+
+        byte getProtocol() {
+            return mPacket[IP_PROTOCOL_FIELD];
         }
 
         private int convertMultipleBytesToPositiveInt(byte... bytes) {
