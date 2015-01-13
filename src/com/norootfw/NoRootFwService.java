@@ -67,9 +67,14 @@ public class NoRootFwService extends VpnService implements Runnable {
             out = new FileOutputStream(mInterface.getFileDescriptor());
             ByteBuffer byteBuffer = ByteBuffer.allocate(IP_PACKET_MAX_LENGTH);
             while (mServiceRun) {
+                // it DOESN'T null out values of the buffer's byte array
+                byteBuffer.clear();
                 final int read = in.read(byteBuffer.array());
                 if (read > 0) {
-                    IPPacket.PACKET.setPacket(byteBuffer.array());
+                    final int packetSize = IPPacket.convertMultipleBytesToPositiveInt(byteBuffer.array()[IPPacket.IP_TOTAL_LENGTH_HIGH_BYTE_INDEX], byteBuffer.array()[IPPacket.IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
+                    byte[] packet = new byte[packetSize];
+                    byteBuffer.get(packet);
+                    IPPacket.PACKET.setPacket(packet);
                     /*
                      * I used to think that DNS requests are
                      * not performed, but it turned out they were.
@@ -87,8 +92,16 @@ public class NoRootFwService extends VpnService implements Runnable {
                                 " SRC: " + IPPacket.PACKET.getSrcIpAddressAsString() +
                                 " DST: " + IPPacket.PACKET.getDstIpAddressAsString());
                     }
-                    NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(),
-                            IPPacket.PACKET.getPayloadLength());
+                    switch (IPPacket.PACKET.getProtocol()) {
+                    case IPPacket.TRANSPORT_PROTOCOL_TCP:
+                        NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
+                        break;
+                    case IPPacket.TRANSPORT_PROTOCOL_UDP:
+                        NoRootFwNative.sendUdpRequest(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
+                        break;
+                    default:
+                        break;
+                    }
                 }
             }
         } catch (IOException e) {
@@ -142,30 +155,30 @@ public class NoRootFwService extends VpnService implements Runnable {
         /**
          * The index of the octet of the TCP header where the size of the TCP header is stored;
          */
-        static int TCP_DATA_OFFSET_INDEX = 12;
+        static final int TCP_DATA_OFFSET_INDEX = 12;
         /**
          * The index of the octet of the TCP header where the flags, such as SYN, ACK, are stored.
          */
-        static int TCP_FLAGS_INDEX = 13;
-        static int TCP_DST_PORT_HIGH_BYTE_INDEX = 2;
-        static int TCP_DST_PORT_LOW_BYTE_INDEX = 3;
+        static final int TCP_FLAGS_INDEX = 13;
+        static final int TCP_DST_PORT_HIGH_BYTE_INDEX = 2;
+        static final int TCP_DST_PORT_LOW_BYTE_INDEX = 3;
 
         /**
          * The number of bytes needed to store an IP address
          */
-        static int IP_ADDRESS_LENGTH = 4;
-        static int IP_HEADER_LENGTH_INDEX = 0;
-        static int IP_TOTAL_LENGTH_HIGH_BYTE_INDEX = 2;
-        static int IP_TOTAL_LENGTH_LOW_BYTE_INDEX = 3;
-        static int IP_PROTOCOL_FIELD = 9;
-        static int IP_SRC_IP_ADDRESS_INDEX = 12;
-        static int IP_DST_IP_ADDRESS_INDEX = 16;
+        static final int IP_ADDRESS_LENGTH = 4;
+        static final int IP_HEADER_LENGTH_INDEX = 0;
+        static final int IP_TOTAL_LENGTH_HIGH_BYTE_INDEX = 2;
+        static final int IP_TOTAL_LENGTH_LOW_BYTE_INDEX = 3;
+        static final int IP_PROTOCOL_FIELD = 9;
+        static final int IP_SRC_IP_ADDRESS_INDEX = 12;
+        static final int IP_DST_IP_ADDRESS_INDEX = 16;
 
         static final String DOT = ".";
 
         // Transport-layer protocols
-        static byte TRANSPORT_PROTOCOL_TCP = 6;
-        static byte TRANSPORT_PROTOCOL_UDP = 17;
+        static final byte TRANSPORT_PROTOCOL_TCP = 6;
+        static final byte TRANSPORT_PROTOCOL_UDP = 17;
 
         // Destination ports
         static final int DST_PORT_DNS = 53;
@@ -199,7 +212,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             return mPacket[IP_PROTOCOL_FIELD];
         }
 
-        private int convertMultipleBytesToPositiveInt(byte... bytes) {
+        private static int convertMultipleBytesToPositiveInt(byte... bytes) {
             int value = convertByteToPositiveInt(bytes[0]) << 8;
             value += convertByteToPositiveInt(bytes[1]);
             return value;
@@ -211,7 +224,7 @@ public class NoRootFwService extends VpnService implements Runnable {
          * @param value
          * @return
          */
-        private int convertByteToPositiveInt(byte value) {
+        private static int convertByteToPositiveInt(byte value) {
             return value >= 0 ? value : value + INTEGER_COMPLEMENT;
         }
 

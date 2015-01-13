@@ -23,3 +23,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendSyn(
 	 */
 	return NULL;
 }
+
+JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendUdpRequest
+  (JNIEnv *env, jclass clazz, jbyteArray packet, jint payload_length) {
+	return NULL;
+}

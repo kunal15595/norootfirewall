@@ -15,6 +15,14 @@ extern "C" {
 JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendSyn
   (JNIEnv *, jclass, jbyteArray, jint);
 
+/*
+ * Class:     com_norootfw_NoRootFwNative
+ * Method:    sendUdpRequest
+ * Signature: ([BI)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendUdpRequest
+  (JNIEnv *, jclass, jbyteArray, jint);
+
 #ifdef __cplusplus
 }
 #endif

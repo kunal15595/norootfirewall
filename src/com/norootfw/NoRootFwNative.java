@@ -9,5 +9,7 @@ class NoRootFwNative {
      * @return an IP packet with SYN+ACK which is returned by lwIP
      */
     static native byte[] sendSyn(byte[] packet, int payloadLength);
+    
+    static native byte[] sendUdpRequest(byte []packet, int payloadLength);
 
 }
