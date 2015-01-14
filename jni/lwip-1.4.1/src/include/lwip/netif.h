@@ -255,6 +255,7 @@ extern struct netif *netif_list;
 extern struct netif *netif_default;
 
 void netif_init(void);
+void netif_init_tun0(void);
 
 struct netif *netif_add(struct netif *netif, ip_addr_t *ipaddr, ip_addr_t *netmask,
       ip_addr_t *gw, void *state, netif_init_fn init, netif_input_fn input);

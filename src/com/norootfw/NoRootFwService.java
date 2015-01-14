@@ -94,7 +94,11 @@ public class NoRootFwService extends VpnService implements Runnable {
                     }
                     switch (IPPacket.PACKET.getProtocol()) {
                     case IPPacket.TRANSPORT_PROTOCOL_TCP:
-                        NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
+                        if (IPPacket.PACKET.isSyn()) {
+                            // TODO: receive SYN+ACK and write it to the TUN device
+                            // NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(),
+                            // IPPacket.PACKET.getPayloadLength());
+                        }
                         break;
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
                         NoRootFwNative.sendUdpRequest(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
@@ -162,6 +166,11 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int TCP_FLAGS_INDEX = 13;
         static final int TCP_DST_PORT_HIGH_BYTE_INDEX = 2;
         static final int TCP_DST_PORT_LOW_BYTE_INDEX = 3;
+
+        /**
+         * A UDP header length
+         */
+        static final int UDP_HEADER_LENGTH = 8;
 
         /**
          * The number of bytes needed to store an IP address
@@ -257,21 +266,31 @@ public class NoRootFwService extends VpnService implements Runnable {
             return (mPacket[IP_HEADER_LENGTH_INDEX] & IHL_MASK) * BIT_WORD_TO_BYTE_MULTIPLIER;
         }
 
-        int getTcpHeaderLength() {
-            final int tcpHeaderStart = getIpHeaderLength();
-            final int dataOffsetOctet = tcpHeaderStart + TCP_DATA_OFFSET_INDEX;
-            /*
-             * Why do we shift to the right 4 times? Because the value we are interested in is
-             * stored in 4 high-order bits.
-             * 
-             * Why do we multiply the result by 4? Because the value stored in the 4 high-order
-             * bytes
-             * is the size of the TCP header in 32-bit words, and we need the result in bytes.
-             * 
-             * Maksim Dmitriev
-             * January 8, 2015
-             */
-            return (convertByteToPositiveInt(mPacket[dataOffsetOctet]) >>> 4) * 4;
+        int getTransportLayerHeaderLength() {
+            final int transportLayerHeaderStart = getIpHeaderLength();
+            final int protocol = getProtocol();
+            switch (protocol) {
+            case TRANSPORT_PROTOCOL_TCP:
+                final int dataOffsetOctet = transportLayerHeaderStart + TCP_DATA_OFFSET_INDEX;
+                /*
+                 * Why do we shift to the right 4 times? Because the value we are interested in is
+                 * stored in 4 high-order bits.
+                 * 
+                 * Why do we multiply the result by 4? Because the value stored in the 4 high-order
+                 * bytes
+                 * is the size of the TCP header in 32-bit words, and we need the result in bytes.
+                 * 
+                 * Maksim Dmitriev
+                 * January 8, 2015
+                 */
+                return (convertByteToPositiveInt(mPacket[dataOffsetOctet]) >>> 4) * 4;
+            case TRANSPORT_PROTOCOL_UDP:
+                return UDP_HEADER_LENGTH;
+            default:
+                // TODO: Notify the user that their data is going to nowhere since I don't 
+                // handle all the protocols listed on http://en.wikipedia.org/wiki/List_of_IP_protocol_numbers
+                throw new RuntimeException("This case should have been handled earlier. protocol == " + protocol);
+            }
         }
 
         /**
@@ -280,7 +299,7 @@ public class NoRootFwService extends VpnService implements Runnable {
          * @return
          */
         int getPayloadLength() {
-            return getTotalLength() - getIpHeaderLength() - getTcpHeaderLength();
+            return getTotalLength() - getIpHeaderLength() - getTransportLayerHeaderLength();
         }
 
         boolean isSyn() {

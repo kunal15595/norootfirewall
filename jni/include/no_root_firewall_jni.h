@@ -23,6 +23,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendSyn
 JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendUdpRequest
   (JNIEnv *, jclass, jbyteArray, jint);
 
+/*
+ * Class:     com_norootfw_NoRootFwNative
+ * Method:    initTun0NetIf
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_norootfw_NoRootFwNative_initTun0NetIf
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif
