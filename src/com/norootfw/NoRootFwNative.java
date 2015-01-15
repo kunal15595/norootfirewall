@@ -18,4 +18,6 @@ class NoRootFwNative {
      * @return true if initialized successfully, false otherwise
      */
     static native boolean initTun0NetIf();
+    
+    static native void initNative();
 }

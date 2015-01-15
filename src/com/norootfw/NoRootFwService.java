@@ -57,6 +57,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             throw new RuntimeException("Failed to create a TUN interface");
         }
         mServiceRun = true;
+        NoRootFwNative.initNative();
         // Packets to be sent are queued in this input stream.
         FileInputStream in = null;
         // Packets received need to be written to this output stream.
