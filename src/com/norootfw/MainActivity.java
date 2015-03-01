@@ -17,21 +17,14 @@ import java.net.UnknownHostException;
 public class MainActivity extends Activity implements OnClickListener {
 
     private static final int ENBLE_FIREWALL_REQ_CODE = 0x01;
-    // "192.168.1.165" = -64, -88, 1, -91
-    private byte[] mWlanIpAddress = new byte[] {
-            -64, -88, 1, -91
-    };
-    // 217.69.139.200 == Mail.ru
-    private byte[] mRemoteAddress = new byte[] {
-            -39, 69, -117, -56
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         findViewById(R.id.enable_firewall).setOnClickListener(this);
-        findViewById(R.id.send_test_request).setOnClickListener(this);
+        findViewById(R.id.send_tcp_request).setOnClickListener(this);
+        findViewById(R.id.send_udp_request).setOnClickListener(this);
     }
 
     @Override
@@ -64,7 +57,7 @@ public class MainActivity extends Activity implements OnClickListener {
                 onActivityResult(ENBLE_FIREWALL_REQ_CODE, RESULT_OK, null);
             }
             break;
-        case R.id.send_test_request:
+        case R.id.send_tcp_request:
             new Thread(new Runnable() {
 
                 @Override
@@ -72,11 +65,12 @@ public class MainActivity extends Activity implements OnClickListener {
                     try {
                         Socket socket = new Socket("time-A.timefreq.bldrdoc.gov", 13);
                         InputStream inputStream = socket.getInputStream();
-                        final int read = inputStream.read();
+                        byte data[] = new byte[1024];
+                        final int read = inputStream.read(data);
                         if (read > 0) {
                             Log.d("NoRootFwService", "OK. inputStream is not empty: " + read);
                         } else {
-                            Log.e("NoRootFwService", "Error. read() returned: " + read);
+                            Log.e("NoRootFwService", "Error. read() returned: " + new String(data));
                         }
                         socket.close();
                         inputStream.close();
@@ -85,6 +79,15 @@ public class MainActivity extends Activity implements OnClickListener {
                     } catch (IOException e) {
                         Log.e("NoRootFwService", "Got " + e.toString(), e);
                     }
+                }
+            }).start();
+            break;
+        case R.id.send_udp_request:
+            new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    // TODO: copy from your Socket-Client app.
                 }
             }).start();
             break;

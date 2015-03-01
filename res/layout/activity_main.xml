@@ -16,9 +16,15 @@
         android:text="@string/enable_firewall" />
 
     <Button
-        android:id="@+id/send_test_request"
+        android:id="@+id/send_tcp_request"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/send_test_request" />
+        android:text="@string/send_tcp_request" />
+
+    <Button
+        android:id="@+id/send_udp_request"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/send_udp_request" />
 
 </LinearLayout>

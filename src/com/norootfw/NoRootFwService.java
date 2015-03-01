@@ -8,7 +8,10 @@ import android.util.Log;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
 
 public class NoRootFwService extends VpnService implements Runnable {
@@ -101,12 +104,26 @@ public class NoRootFwService extends VpnService implements Runnable {
                     case IPPacket.TRANSPORT_PROTOCOL_TCP:
                         if (IPPacket.PACKET.isSyn()) {
                             // TODO: receive SYN+ACK and write it to the TUN device
-                            // NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(),
-                            // IPPacket.PACKET.getPayloadLength());
+                            NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(),
+                                    IPPacket.PACKET.getPayloadLength());
                         }
                         break;
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
-                        NoRootFwNative.sendUdpRequest(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
+                        // TODO: this if is added to quickly switch between the two ways.
+                        if (true) {
+                            DatagramChannel channel = DatagramChannel.open();
+                            if (protect(channel.socket())) {
+                                SocketAddress socketAddress =
+                                        new InetSocketAddress(IPPacket.PACKET.getDstIpAddressAsString(),
+                                                IPPacket.PACKET.getDstPort());
+                                channel.connect(socketAddress);
+                                channel.write(ByteBuffer.wrap(IPPacket.PACKET.getPayload()));
+                            } else {
+                                throw new IllegalStateException("Failed to create a protected socket");
+                            }
+                        } else {
+                            NoRootFwNative.sendUdpRequest(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
+                        }
                         break;
                     default:
                         break;
@@ -198,6 +215,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int DST_PORT_DNS = 53;
 
         byte[] mPacket;
+        byte[] mPayload;
 
         void setPacket(byte[] packet) {
             /*
@@ -205,6 +223,7 @@ public class NoRootFwService extends VpnService implements Runnable {
              * assigning a new value.
              */
             mPacket = packet;
+            mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
         }
 
         byte[] getPacket() {
@@ -224,6 +243,10 @@ public class NoRootFwService extends VpnService implements Runnable {
 
         byte getProtocol() {
             return mPacket[IP_PROTOCOL_FIELD];
+        }
+
+        byte[] getPayload() {
+            return mPayload;
         }
 
         private static int convertMultipleBytesToPositiveInt(byte... bytes) {
@@ -292,8 +315,9 @@ public class NoRootFwService extends VpnService implements Runnable {
             case TRANSPORT_PROTOCOL_UDP:
                 return UDP_HEADER_LENGTH;
             default:
-                // TODO: Notify the user that their data is going to nowhere since I don't 
-                // handle all the protocols listed on http://en.wikipedia.org/wiki/List_of_IP_protocol_numbers
+                // TODO: Notify the user that their data is going to nowhere since I don't
+                // handle all the protocols listed on
+                // http://en.wikipedia.org/wiki/List_of_IP_protocol_numbers
                 throw new RuntimeException("This case should have been handled earlier. protocol == " + protocol);
             }
         }
