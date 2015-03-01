@@ -3,6 +3,7 @@
 #include "lwip/pbuf.h"
 #include "lwip/mem.h"
 #include "lwip/netif.h"
+#include "lwip/init.h"
 #include "log.h"
 
 static struct netif tun0;
@@ -14,7 +15,6 @@ JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendSyn(
 
 	 Design and Implementation of the lwIP TCP/IP Stack.
 	 */
-	mem_init();
 	struct pbuf *buf = pbuf_alloc(PBUF_LINK, payload_length, PBUF_RAM);
 	/*
 	 * Should I call mem_free() here?
@@ -30,7 +30,6 @@ JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendSyn(
 
 JNIEXPORT jbyteArray JNICALL Java_com_norootfw_NoRootFwNative_sendUdpRequest(
 		JNIEnv *env, jclass clazz, jbyteArray packet, jint payload_length) {
-	mem_init();
 	struct pbuf *buf = pbuf_alloc(PBUF_LINK, payload_length, PBUF_RAM);
 	if (buf == NULL)
 	{
@@ -50,4 +49,9 @@ JNIEXPORT jboolean JNICALL Java_com_norootfw_NoRootFwNative_initTun0NetIf
   (JNIEnv *env, jclass clazz) {
     // TODO: Init netif. netif *tun0 = netif_add(&loop_netif, &loop_ipaddr, &loop_netmask, &loop_gw, NULL, netif_loopif_init, ip_input);
 	return 0;
+}
+
+JNIEXPORT void JNICALL Java_com_norootfw_NoRootFwNative_initNative
+  (JNIEnv *env, jclass clazz) {
+	lwip_init();
 }

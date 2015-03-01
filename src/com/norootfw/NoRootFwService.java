@@ -13,6 +13,10 @@ import java.util.Arrays;
 
 public class NoRootFwService extends VpnService implements Runnable {
 
+    private static final int TUN_DEVICE_ADDRESS_PREFIX_LENGTH = 24;
+    private static final int ROUTE_PREFIX_LENGTH = 1;
+    private static final String ROUTE_2 = "128.0.0.0";
+    private static final String ROUTE_1 = "0.0.0.0";
     private static final int IP_PACKET_MAX_LENGTH = 65535;
     private volatile boolean mServiceRun;
 
@@ -49,9 +53,9 @@ public class NoRootFwService extends VpnService implements Runnable {
     @Override
     public void run() {
         mInterface = new Builder().setSession(getString(R.string.app_name))
-                .addAddress(TUN_DEVICE_ADDRESS, 24)
-                .addRoute("0.0.0.0", 1)
-                .addRoute("128.0.0.0", 1)
+                .addAddress(TUN_DEVICE_ADDRESS, TUN_DEVICE_ADDRESS_PREFIX_LENGTH)
+                .addRoute(ROUTE_1, ROUTE_PREFIX_LENGTH)
+                .addRoute(ROUTE_2, ROUTE_PREFIX_LENGTH)
                 .establish();
         if (mInterface == null) {
             throw new RuntimeException("Failed to create a TUN interface");
