@@ -8,10 +8,10 @@ import android.util.Log;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.Inet4Address;
 import java.nio.ByteBuffer;
-import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
 
 public class NoRootFwService extends VpnService implements Runnable {
@@ -100,6 +100,9 @@ public class NoRootFwService extends VpnService implements Runnable {
                                 " SRC: " + IPPacket.PACKET.getSrcIpAddressAsString() +
                                 " DST: " + IPPacket.PACKET.getDstIpAddressAsString());
                     }
+                    if (IPPacket.PACKET.getDstPort() == IPPacket.DST_PORT_DNS) {
+                        // TODO: create a protected socket and perform a DNS request
+                    }
                     switch (IPPacket.PACKET.getProtocol()) {
                     case IPPacket.TRANSPORT_PROTOCOL_TCP:
                         if (IPPacket.PACKET.isSyn()) {
@@ -111,13 +114,13 @@ public class NoRootFwService extends VpnService implements Runnable {
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
                         // TODO: this if is added to quickly switch between the two ways.
                         if (true) {
-                            DatagramChannel channel = DatagramChannel.open();
-                            if (protect(channel.socket())) {
-                                SocketAddress socketAddress =
-                                        new InetSocketAddress(IPPacket.PACKET.getDstIpAddressAsString(),
-                                                IPPacket.PACKET.getDstPort());
-                                channel.connect(socketAddress);
-                                channel.write(ByteBuffer.wrap(IPPacket.PACKET.getPayload()));
+                            DatagramSocket datagramSocket = new DatagramSocket();
+                            if (protect(datagramSocket)) {
+                                byte []dstAddress = IPPacket.PACKET.getDstIpAddress();
+                                datagramSocket.connect(Inet4Address.getByAddress(dstAddress),
+                                        IPPacket.PACKET.getDstPort());
+                                final int offset = IPPacket.PACKET.getIpHeaderLength() + IPPacket.PACKET.getTransportLayerHeaderLength();
+                                DatagramPacket response = new DatagramPacket(byteBuffer.array(), offset, 1);
                             } else {
                                 throw new IllegalStateException("Failed to create a protected socket");
                             }
@@ -186,8 +189,9 @@ public class NoRootFwService extends VpnService implements Runnable {
          * The index of the octet of the TCP header where the flags, such as SYN, ACK, are stored.
          */
         static final int TCP_FLAGS_INDEX = 13;
-        static final int TCP_DST_PORT_HIGH_BYTE_INDEX = 2;
-        static final int TCP_DST_PORT_LOW_BYTE_INDEX = 3;
+        static final int TRANSPORT_LAYER_SRC_PORT_HIGH_BYTE_INDEX = 0;
+        static final int TRANSPORT_LAYER_DST_PORT_HIGH_BYTE_INDEX = 2;
+        static final int TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX = 3;
 
         /**
          * A UDP header length
@@ -215,7 +219,6 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int DST_PORT_DNS = 53;
 
         byte[] mPacket;
-        byte[] mPayload;
 
         void setPacket(byte[] packet) {
             /*
@@ -223,7 +226,6 @@ public class NoRootFwService extends VpnService implements Runnable {
              * assigning a new value.
              */
             mPacket = packet;
-            mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
         }
 
         byte[] getPacket() {
@@ -246,7 +248,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
 
         byte[] getPayload() {
-            return mPayload;
+            return Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
         }
 
         private static int convertMultipleBytesToPositiveInt(byte... bytes) {
@@ -363,11 +365,38 @@ public class NoRootFwService extends VpnService implements Runnable {
             return getIpAddressAsAstring(IP_DST_IP_ADDRESS_INDEX);
         }
 
+        byte[] getSrcIpAddress() {
+            return getIpAddress(IP_SRC_IP_ADDRESS_INDEX);
+        }
+
+        byte[] getDstIpAddress() {
+            return getIpAddress(IP_DST_IP_ADDRESS_INDEX);
+        }
+
         int getDstPort() {
             final int tcpHeaderStart = getIpHeaderLength();
             return convertMultipleBytesToPositiveInt(
-                    mPacket[tcpHeaderStart + TCP_DST_PORT_HIGH_BYTE_INDEX],
-                    mPacket[tcpHeaderStart + TCP_DST_PORT_LOW_BYTE_INDEX]);
+                    mPacket[tcpHeaderStart + TRANSPORT_LAYER_DST_PORT_HIGH_BYTE_INDEX],
+                    mPacket[tcpHeaderStart + TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX]);
+        }
+
+        private void reverseRanges(int srcStart, int dstStart) {
+            while (srcStart < IP_DST_IP_ADDRESS_INDEX) {
+                byte temp = 0;
+                temp = mPacket[srcStart];
+                mPacket[srcStart] = mPacket[dstStart];
+                mPacket[dstStart] = temp;
+                srcStart++;
+                dstStart++;
+            }
+        }
+
+        void reverseIpAddresses() {
+            reverseRanges(IP_SRC_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX);
+        }
+
+        void reversePortNumbers() {
+            reverseRanges(TRANSPORT_LAYER_SRC_PORT_HIGH_BYTE_INDEX, TRANSPORT_LAYER_DST_PORT_HIGH_BYTE_INDEX);
         }
     }
 }
