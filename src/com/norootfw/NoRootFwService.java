@@ -112,47 +112,55 @@ public class NoRootFwService extends VpnService implements Runnable {
                         }
                         break;
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
-                        DatagramSocket datagramSocket = new DatagramSocket();
                         if (IPPacket.PACKET.getDstIpAddressAsString().equals("192.168.1.197")) {
                             Log.d(TAG, "Stop here");
-                        }
-                        
-                        // TODO: delete the value
-                        int testResponseLen = 1024;
-                        if (protect(datagramSocket)) {
-                            
-                            /* 
-                             * Handle an IOException if anything goes wrong with a data transfer 
-                             * done by the protected socket.
-                             * 
-                             * Maksim Dmitriev
-                             * April 12, 2015
-                             */
-                            try {
-                                DatagramPacket request = new DatagramPacket(IPPacket.PACKET.getPayload(), 
-                                        IPPacket.PACKET.getPayload().length, 
-                                        Inet4Address.getByAddress(IPPacket.PACKET.getDstIpAddress()), 
-                                        IPPacket.PACKET.getDstPort());
-                                datagramSocket.send(request);
+                            DatagramSocket datagramSocket = new DatagramSocket();
+
+                            // TODO: delete the value
+                            int testResponseLen = 6;
+                            if (protect(datagramSocket)) {
                                 
-                                // Test. 1024 bytes
-                                byte []responseData = new byte[testResponseLen];
-                                DatagramPacket response = new DatagramPacket(responseData, responseData.length);
-                                datagramSocket.receive(response);
-                            } catch (IOException e) {
-                                Log.e(TAG, "", e);
-                            } finally {
-                                datagramSocket.close();
+                                /* 
+                                 * Handle an IOException if anything goes wrong with a data transfer 
+                                 * done by the protected socket.
+                                 * 
+                                 * Maksim Dmitriev
+                                 * April 12, 2015
+                                 */
+                                try {
+                                    DatagramPacket request = new DatagramPacket(IPPacket.PACKET.getPayload(), 
+                                            IPPacket.PACKET.getPayload().length, 
+                                            Inet4Address.getByAddress(IPPacket.PACKET.getDstIpAddress()), 
+                                            IPPacket.PACKET.getDstPort());
+                                    datagramSocket.send(request);
+                                    
+                                    // Test. 1024 bytes
+                                    byte []responseData = new byte[testResponseLen];
+                                    DatagramPacket response = new DatagramPacket(responseData, responseData.length);
+                                    datagramSocket.receive(response);
+                                    IPPacket.PACKET.setSrcIpAddress(response.getAddress().getAddress());
+                                    IPPacket.PACKET.setDstIpAddress(Inet4Address.getByName("192.168.1.165").getAddress());
+                                    Log.d(TAG, "Test response: " + new String(responseData));
+                                    
+                                    // TODO: assign IP addresses
+                                    IPPacket.PACKET.swapPortNumbers();
+                                    
+                                    int ipHeader = IPPacket.PACKET.getIpHeaderLength();
+                                    int transportHeader = IPPacket.PACKET.getTransportLayerHeaderLength();
+                                    int headers = ipHeader + transportHeader;
+                                    IPPacket.PACKET.setTotalLength(headers + testResponseLen);
+                                    IPPacket.PACKET.setPayload(headers, responseData);
+                                    out.write(IPPacket.PACKET.getPacket(), 0, IPPacket.PACKET.getTotalLength());
+                                } catch (IOException e) {
+                                    Log.e(TAG, "", e);
+                                } finally {
+                                    datagramSocket.close();
+                                }
+                            } else {
+                                throw new IllegalStateException("Failed to create a protected socket");
                             }
-                            
-                            final int headers = IPPacket.PACKET.getIpHeaderLength() + IPPacket.PACKET.getTransportLayerHeaderLength();
-                            IPPacket.PACKET.reverseIpAddresses();
-                            IPPacket.PACKET.reversePortNumbers();
-                            IPPacket.PACKET.setTotalLength(headers + testResponseLen);
-                            out.write(IPPacket.PACKET.getPacket());
-                        } else {
-                            throw new IllegalStateException("Failed to create a protected socket");
                         }
+
                     
                         break;
                     default:
@@ -208,6 +216,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int IHL_MASK = 0x0f;
         static final int TCP_FLAGS_SYN_MASK = 0x02;
         static final int INTEGER_COMPLEMENT = 256;
+
         /**
          * The index of the octet of the TCP header where the size of the TCP header is stored;
          */
@@ -218,6 +227,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int TCP_FLAGS_INDEX = 13;
         static final int TRANSPORT_LAYER_SRC_PORT_HIGH_BYTE_INDEX = 0;
         static final int TRANSPORT_LAYER_DST_PORT_HIGH_BYTE_INDEX = 2;
+        static final int TRANSPORT_LAYER_SPACE_IN_BYTES = 2;
         static final int TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX = 3;
 
         /**
@@ -283,11 +293,33 @@ public class NoRootFwService extends VpnService implements Runnable {
         byte[] getPayload() {
             return mPayload;
         }
+        
+        void setPayload(int headers, byte[]payload) {
+            System.arraycopy(payload, 0, mPacket, headers, payload.length);
+            mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
+        }
+        
+        void setSrcIpAddress(byte []address) {
+            System.arraycopy(address, 0, mPacket, IP_SRC_IP_ADDRESS_INDEX, address.length);
+            mSrcIpAddress = Arrays.copyOfRange(mPacket, IP_SRC_IP_ADDRESS_INDEX, IP_SRC_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
+        }
+        
+        void setDstIpAddress(byte []address) {
+            System.arraycopy(address, 0, mPacket, IP_DST_IP_ADDRESS_INDEX, address.length);
+            mDstIpAddress = Arrays.copyOfRange(mPacket, IP_DST_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
+        }
 
         private static int convertMultipleBytesToPositiveInt(byte... bytes) {
             int value = convertByteToPositiveInt(bytes[0]) << 8;
             value += convertByteToPositiveInt(bytes[1]);
             return value;
+        }
+        
+        static byte[] convertPositiveIntToBytes(int src) {
+            byte[] result = new byte[2];
+            result[1] = (byte) (255 & src);
+            result[0] = (byte) (255 & (src >>> 8));
+            return result;
         }
 
         /**
@@ -365,7 +397,9 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
         
         void setTotalLength(int length) {
-            // TODO:
+            byte []lengthAsBytes = convertPositiveIntToBytes(length);
+            mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX] = lengthAsBytes[0];
+            mPacket[IP_TOTAL_LENGTH_LOW_BYTE_INDEX] = lengthAsBytes[1];
         }
 
         boolean isSyn() {
@@ -395,10 +429,6 @@ public class NoRootFwService extends VpnService implements Runnable {
             return getIpAddressAsAstring(mDstIpAddress);
         }
 
-        byte[] getSrcIpAddress() {
-            return mSrcIpAddress;
-        }
-
         byte[] getDstIpAddress() {
             return mDstIpAddress;
         }
@@ -410,23 +440,18 @@ public class NoRootFwService extends VpnService implements Runnable {
                     mPacket[tcpHeaderStart + TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX]);
         }
 
-        private void reverseRanges(int srcStart, int dstStart) {
-            while (srcStart < IP_DST_IP_ADDRESS_INDEX) {
+        void swapPortNumbers() {
+            int srcStart = getIpHeaderLength();
+            int dstStart = srcStart + TRANSPORT_LAYER_SPACE_IN_BYTES;
+            for (int i =  0; i < TRANSPORT_LAYER_SPACE_IN_BYTES; i++) {
                 byte temp = 0;
                 temp = mPacket[srcStart];
                 mPacket[srcStart] = mPacket[dstStart];
                 mPacket[dstStart] = temp;
                 srcStart++;
                 dstStart++;
+            
             }
-        }
-
-        void reverseIpAddresses() {
-            reverseRanges(IP_SRC_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX);
-        }
-
-        void reversePortNumbers() {
-            reverseRanges(TRANSPORT_LAYER_SRC_PORT_HIGH_BYTE_INDEX, TRANSPORT_LAYER_DST_PORT_HIGH_BYTE_INDEX);
         }
     }
 }

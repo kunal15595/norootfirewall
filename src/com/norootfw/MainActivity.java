@@ -3,8 +3,15 @@ package com.norootfw;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Collections;
+import java.util.Enumeration;
 
 public class MainActivity extends Activity implements OnClickListener {
 
@@ -15,7 +22,28 @@ public class MainActivity extends Activity implements OnClickListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         findViewById(R.id.enable_firewall).setOnClickListener(this);
+        
+        Enumeration<NetworkInterface> nets;
+        try {
+            nets = NetworkInterface.getNetworkInterfaces();
+            for (NetworkInterface netint : Collections.list(nets))
+                displayInterfaceInformation(netint);
+       
+        } catch (SocketException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+       
     }
+    
+    static void displayInterfaceInformation(NetworkInterface netint) throws SocketException {
+        Log.d(NoRootFwService.class.getSimpleName(),  netint.getDisplayName());
+        Log.d(NoRootFwService.class.getSimpleName(),  netint.getName());
+        Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
+        for (InetAddress inetAddress : Collections.list(inetAddresses)) {
+            Log.d(NoRootFwService.class.getSimpleName(), "InetAddress: " +  inetAddress);
+        }
+     }
 
     @Override
     public void onClick(View v) {
