@@ -90,7 +90,7 @@ public class NoRootFwService extends VpnService implements Runnable {
                      * Maksim Dmitriev
                      * January 9, 2015
                      */
-                    if (BuildConfig.DEBUG) {
+                    if (true) {
                         final byte protocol = IPPacket.PACKET.getProtocol();
                         Log.d(TAG, "DST port: " + IPPacket.PACKET.getDstPort() +
                                 " Transport-layer protocol: " + protocol +
@@ -112,21 +112,48 @@ public class NoRootFwService extends VpnService implements Runnable {
                         }
                         break;
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
-                        // TODO: this if is added to quickly switch between the two ways.
-                        if (true) {
-                            DatagramSocket datagramSocket = new DatagramSocket();
-                            if (protect(datagramSocket)) {
-                                byte []dstAddress = IPPacket.PACKET.getDstIpAddress();
-                                datagramSocket.connect(Inet4Address.getByAddress(dstAddress),
-                                        IPPacket.PACKET.getDstPort());
-                                final int offset = IPPacket.PACKET.getIpHeaderLength() + IPPacket.PACKET.getTransportLayerHeaderLength();
-                                DatagramPacket response = new DatagramPacket(byteBuffer.array(), offset, 1);
-                            } else {
-                                throw new IllegalStateException("Failed to create a protected socket");
-                            }
-                        } else {
-                            NoRootFwNative.sendUdpRequest(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPayloadLength());
+                        DatagramSocket datagramSocket = new DatagramSocket();
+                        if (IPPacket.PACKET.getDstIpAddressAsString().equals("192.168.1.197")) {
+                            Log.d(TAG, "Stop here");
                         }
+                        
+                        // TODO: delete the value
+                        int testResponseLen = 1024;
+                        if (protect(datagramSocket)) {
+                            
+                            /* 
+                             * Handle an IOException if anything goes wrong with a data transfer 
+                             * done by the protected socket.
+                             * 
+                             * Maksim Dmitriev
+                             * April 12, 2015
+                             */
+                            try {
+                                DatagramPacket request = new DatagramPacket(IPPacket.PACKET.getPayload(), 
+                                        IPPacket.PACKET.getPayload().length, 
+                                        Inet4Address.getByAddress(IPPacket.PACKET.getDstIpAddress()), 
+                                        IPPacket.PACKET.getDstPort());
+                                datagramSocket.send(request);
+                                
+                                // Test. 1024 bytes
+                                byte []responseData = new byte[testResponseLen];
+                                DatagramPacket response = new DatagramPacket(responseData, responseData.length);
+                                datagramSocket.receive(response);
+                            } catch (IOException e) {
+                                Log.e(TAG, "", e);
+                            } finally {
+                                datagramSocket.close();
+                            }
+                            
+                            final int headers = IPPacket.PACKET.getIpHeaderLength() + IPPacket.PACKET.getTransportLayerHeaderLength();
+                            IPPacket.PACKET.reverseIpAddresses();
+                            IPPacket.PACKET.reversePortNumbers();
+                            IPPacket.PACKET.setTotalLength(headers + testResponseLen);
+                            out.write(IPPacket.PACKET.getPacket());
+                        } else {
+                            throw new IllegalStateException("Failed to create a protected socket");
+                        }
+                    
                         break;
                     default:
                         break;
@@ -219,6 +246,9 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int DST_PORT_DNS = 53;
 
         byte[] mPacket;
+        byte[] mPayload;
+        byte[] mSrcIpAddress;
+        byte[] mDstIpAddress;
 
         void setPacket(byte[] packet) {
             /*
@@ -226,6 +256,9 @@ public class NoRootFwService extends VpnService implements Runnable {
              * assigning a new value.
              */
             mPacket = packet;
+            mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
+            mSrcIpAddress = Arrays.copyOfRange(mPacket, IP_SRC_IP_ADDRESS_INDEX, IP_SRC_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
+            mDstIpAddress = Arrays.copyOfRange(mPacket, IP_DST_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
         }
 
         byte[] getPacket() {
@@ -248,7 +281,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
 
         byte[] getPayload() {
-            return Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
+            return mPayload;
         }
 
         private static int convertMultipleBytesToPositiveInt(byte... bytes) {
@@ -317,10 +350,8 @@ public class NoRootFwService extends VpnService implements Runnable {
             case TRANSPORT_PROTOCOL_UDP:
                 return UDP_HEADER_LENGTH;
             default:
-                // TODO: Notify the user that their data is going to nowhere since I don't
-                // handle all the protocols listed on
-                // http://en.wikipedia.org/wiki/List_of_IP_protocol_numbers
-                throw new RuntimeException("This case should have been handled earlier. protocol == " + protocol);
+                Log.w(TAG, "Unsupported protocol == " + protocol);
+                return 0;
             }
         }
 
@@ -332,21 +363,20 @@ public class NoRootFwService extends VpnService implements Runnable {
         int getPayloadLength() {
             return getTotalLength() - getIpHeaderLength() - getTransportLayerHeaderLength();
         }
+        
+        void setTotalLength(int length) {
+            // TODO:
+        }
 
         boolean isSyn() {
             return (mPacket[getIpHeaderLength() + TCP_FLAGS_INDEX] & TCP_FLAGS_SYN_MASK) != 0;
-        }
-
-        private byte[] getIpAddress(int startIndex) {
-            return Arrays.copyOfRange(mPacket, startIndex, startIndex + IP_ADDRESS_LENGTH);
         }
 
         /**
          * 
          * @return The IPv4 address in dot-decimal notation
          */
-        private String getIpAddressAsAstring(int startIndex) {
-            byte[] addressAsBytes = getIpAddress(startIndex);
+        private String getIpAddressAsAstring(byte []addressAsBytes) {
             StringBuilder builder = new StringBuilder();
             for (int i = 0; i < addressAsBytes.length; i++) {
                 builder.append(convertByteToPositiveInt(addressAsBytes[i]));
@@ -358,19 +388,19 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
 
         String getSrcIpAddressAsString() {
-            return getIpAddressAsAstring(IP_SRC_IP_ADDRESS_INDEX);
+            return getIpAddressAsAstring(mSrcIpAddress);
         }
 
         String getDstIpAddressAsString() {
-            return getIpAddressAsAstring(IP_DST_IP_ADDRESS_INDEX);
+            return getIpAddressAsAstring(mDstIpAddress);
         }
 
         byte[] getSrcIpAddress() {
-            return getIpAddress(IP_SRC_IP_ADDRESS_INDEX);
+            return mSrcIpAddress;
         }
 
         byte[] getDstIpAddress() {
-            return getIpAddress(IP_DST_IP_ADDRESS_INDEX);
+            return mDstIpAddress;
         }
 
         int getDstPort() {
