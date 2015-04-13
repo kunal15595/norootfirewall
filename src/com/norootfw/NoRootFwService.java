@@ -3,6 +3,7 @@ package com.norootfw;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import java.io.FileInputStream;
@@ -21,7 +22,8 @@ public class NoRootFwService extends VpnService implements Runnable {
     private static final String ROUTE_2 = "128.0.0.0";
     private static final String ROUTE_1 = "0.0.0.0";
     private static final int IP_PACKET_MAX_LENGTH = 65535;
-    private volatile boolean mServiceRun;
+    private static volatile boolean sServiceRun;
+    public static final String ACTION_SERVICE_STARTED = "com.norootfw.intent.action.SERVICE_STARTED";
 
     static {
         System.loadLibrary("lwip");
@@ -43,14 +45,19 @@ public class NoRootFwService extends VpnService implements Runnable {
 
     @Override
     public void onDestroy() {
+        Log.d(TAG, "onDestroy");
         stopCapturingPackets();
     }
 
     private void stopCapturingPackets() {
-        mServiceRun = false;
+        sServiceRun = false;
         if (mThread != null) {
             mThread.interrupt();
         }
+    }
+    
+    public static boolean isRun() {
+        return sServiceRun;
     }
 
     @Override
@@ -63,7 +70,8 @@ public class NoRootFwService extends VpnService implements Runnable {
         if (mInterface == null) {
             throw new RuntimeException("Failed to create a TUN interface");
         }
-        mServiceRun = true;
+        sServiceRun = true;
+        LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ACTION_SERVICE_STARTED));
         NoRootFwNative.initNative();
         // Packets to be sent are queued in this input stream.
         FileInputStream in = null;
@@ -74,7 +82,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             in = new FileInputStream(mInterface.getFileDescriptor());
             out = new FileOutputStream(mInterface.getFileDescriptor());
             ByteBuffer byteBuffer = ByteBuffer.allocate(IP_PACKET_MAX_LENGTH);
-            while (mServiceRun) {
+            while (sServiceRun) {
                 // it DOESN'T null out values of the buffer's byte array
                 byteBuffer.clear();
                 final int read = in.read(byteBuffer.array());
@@ -119,32 +127,32 @@ public class NoRootFwService extends VpnService implements Runnable {
                             // TODO: delete the value
                             int testResponseLen = 6;
                             if (protect(datagramSocket)) {
-                                
-                                /* 
-                                 * Handle an IOException if anything goes wrong with a data transfer 
+
+                                /*
+                                 * Handle an IOException if anything goes wrong with a data transfer
                                  * done by the protected socket.
                                  * 
                                  * Maksim Dmitriev
                                  * April 12, 2015
                                  */
                                 try {
-                                    DatagramPacket request = new DatagramPacket(IPPacket.PACKET.getPayload(), 
-                                            IPPacket.PACKET.getPayload().length, 
-                                            Inet4Address.getByAddress(IPPacket.PACKET.getDstIpAddress()), 
+                                    DatagramPacket request = new DatagramPacket(IPPacket.PACKET.getPayload(),
+                                            IPPacket.PACKET.getPayload().length,
+                                            Inet4Address.getByAddress(IPPacket.PACKET.getDstIpAddress()),
                                             IPPacket.PACKET.getDstPort());
                                     datagramSocket.send(request);
-                                    
+
                                     // Test. 1024 bytes
-                                    byte []responseData = new byte[testResponseLen];
+                                    byte[] responseData = new byte[testResponseLen];
                                     DatagramPacket response = new DatagramPacket(responseData, responseData.length);
                                     datagramSocket.receive(response);
                                     IPPacket.PACKET.setSrcIpAddress(response.getAddress().getAddress());
                                     IPPacket.PACKET.setDstIpAddress(Inet4Address.getByName("192.168.1.165").getAddress());
                                     Log.d(TAG, "Test response: " + new String(responseData));
-                                    
+
                                     // TODO: assign IP addresses
                                     IPPacket.PACKET.swapPortNumbers();
-                                    
+
                                     int ipHeader = IPPacket.PACKET.getIpHeaderLength();
                                     int transportHeader = IPPacket.PACKET.getTransportLayerHeaderLength();
                                     int headers = ipHeader + transportHeader;
@@ -161,7 +169,6 @@ public class NoRootFwService extends VpnService implements Runnable {
                             }
                         }
 
-                    
                         break;
                     default:
                         break;
@@ -293,18 +300,18 @@ public class NoRootFwService extends VpnService implements Runnable {
         byte[] getPayload() {
             return mPayload;
         }
-        
-        void setPayload(int headers, byte[]payload) {
+
+        void setPayload(int headers, byte[] payload) {
             System.arraycopy(payload, 0, mPacket, headers, payload.length);
             mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
         }
-        
-        void setSrcIpAddress(byte []address) {
+
+        void setSrcIpAddress(byte[] address) {
             System.arraycopy(address, 0, mPacket, IP_SRC_IP_ADDRESS_INDEX, address.length);
             mSrcIpAddress = Arrays.copyOfRange(mPacket, IP_SRC_IP_ADDRESS_INDEX, IP_SRC_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
         }
-        
-        void setDstIpAddress(byte []address) {
+
+        void setDstIpAddress(byte[] address) {
             System.arraycopy(address, 0, mPacket, IP_DST_IP_ADDRESS_INDEX, address.length);
             mDstIpAddress = Arrays.copyOfRange(mPacket, IP_DST_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
         }
@@ -314,7 +321,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             value += convertByteToPositiveInt(bytes[1]);
             return value;
         }
-        
+
         static byte[] convertPositiveIntToBytes(int src) {
             byte[] result = new byte[2];
             result[1] = (byte) (255 & src);
@@ -395,9 +402,9 @@ public class NoRootFwService extends VpnService implements Runnable {
         int getPayloadLength() {
             return getTotalLength() - getIpHeaderLength() - getTransportLayerHeaderLength();
         }
-        
+
         void setTotalLength(int length) {
-            byte []lengthAsBytes = convertPositiveIntToBytes(length);
+            byte[] lengthAsBytes = convertPositiveIntToBytes(length);
             mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX] = lengthAsBytes[0];
             mPacket[IP_TOTAL_LENGTH_LOW_BYTE_INDEX] = lengthAsBytes[1];
         }
@@ -410,7 +417,7 @@ public class NoRootFwService extends VpnService implements Runnable {
          * 
          * @return The IPv4 address in dot-decimal notation
          */
-        private String getIpAddressAsAstring(byte []addressAsBytes) {
+        private String getIpAddressAsAstring(byte[] addressAsBytes) {
             StringBuilder builder = new StringBuilder();
             for (int i = 0; i < addressAsBytes.length; i++) {
                 builder.append(convertByteToPositiveInt(addressAsBytes[i]));
@@ -443,14 +450,14 @@ public class NoRootFwService extends VpnService implements Runnable {
         void swapPortNumbers() {
             int srcStart = getIpHeaderLength();
             int dstStart = srcStart + TRANSPORT_LAYER_SPACE_IN_BYTES;
-            for (int i =  0; i < TRANSPORT_LAYER_SPACE_IN_BYTES; i++) {
+            for (int i = 0; i < TRANSPORT_LAYER_SPACE_IN_BYTES; i++) {
                 byte temp = 0;
                 temp = mPacket[srcStart];
                 mPacket[srcStart] = mPacket[dstStart];
                 mPacket[dstStart] = temp;
                 srcStart++;
                 dstStart++;
-            
+
             }
         }
     }

@@ -1,49 +1,54 @@
 package com.norootfw;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
-import android.util.Log;
+import android.support.v4.content.LocalBroadcastManager;
 import android.view.View;
 import android.view.View.OnClickListener;
-
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.Collections;
-import java.util.Enumeration;
+import android.widget.Button;
 
 public class MainActivity extends Activity implements OnClickListener {
 
-    private static final int ENBLE_FIREWALL_REQ_CODE = 0x01;
+    private static final int ENABLE_FIREWALL_REQ_CODE = 0x01;
+    private Button mFirewall;
+    
+    private static final IntentFilter FILTER_SERVICE_STARTED = new IntentFilter(NoRootFwService.ACTION_SERVICE_STARTED);
+    private BroadcastReceiver mServiceStartReceiver = new BroadcastReceiver() {
+        
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            mFirewall.setEnabled(false);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        findViewById(R.id.enable_firewall).setOnClickListener(this);
-        
-        Enumeration<NetworkInterface> nets;
-        try {
-            nets = NetworkInterface.getNetworkInterfaces();
-            for (NetworkInterface netint : Collections.list(nets))
-                displayInterfaceInformation(netint);
-       
-        } catch (SocketException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-       
+        mFirewall = (Button) findViewById(R.id.enable_firewall);
+        mFirewall.setOnClickListener(this);
     }
     
-    static void displayInterfaceInformation(NetworkInterface netint) throws SocketException {
-        Log.d(NoRootFwService.class.getSimpleName(),  netint.getDisplayName());
-        Log.d(NoRootFwService.class.getSimpleName(),  netint.getName());
-        Enumeration<InetAddress> inetAddresses = netint.getInetAddresses();
-        for (InetAddress inetAddress : Collections.list(inetAddresses)) {
-            Log.d(NoRootFwService.class.getSimpleName(), "InetAddress: " +  inetAddress);
+    @Override
+    protected void onPause() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mServiceStartReceiver);
+        super.onPause();
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        LocalBroadcastManager.getInstance(this).registerReceiver(mServiceStartReceiver, FILTER_SERVICE_STARTED);
+        if (NoRootFwService.isRun()) {
+            mFirewall.setEnabled(false);
+        } else{
+            mFirewall.setEnabled(true);
         }
-     }
+    }
 
     @Override
     public void onClick(View v) {
@@ -51,9 +56,9 @@ public class MainActivity extends Activity implements OnClickListener {
         case R.id.enable_firewall:
             Intent intent = NoRootFwService.prepare(this);
             if (intent != null) {
-                startActivityForResult(intent, ENBLE_FIREWALL_REQ_CODE);
+                startActivityForResult(intent, ENABLE_FIREWALL_REQ_CODE);
             } else {
-                onActivityResult(ENBLE_FIREWALL_REQ_CODE, RESULT_OK, null);
+                onActivityResult(ENABLE_FIREWALL_REQ_CODE, RESULT_OK, null);
             }
             break;
         }
