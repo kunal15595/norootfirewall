@@ -45,7 +45,6 @@ public class NoRootFwService extends VpnService implements Runnable {
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "onDestroy");
         stopCapturingPackets();
     }
 
@@ -55,7 +54,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             mThread.interrupt();
         }
     }
-    
+
     public static boolean isRun() {
         return sServiceRun;
     }
@@ -146,18 +145,32 @@ public class NoRootFwService extends VpnService implements Runnable {
                                     byte[] responseData = new byte[testResponseLen];
                                     DatagramPacket response = new DatagramPacket(responseData, responseData.length);
                                     datagramSocket.receive(response);
-                                    IPPacket.PACKET.setSrcIpAddress(response.getAddress().getAddress());
-                                    IPPacket.PACKET.setDstIpAddress(Inet4Address.getByName("192.168.1.165").getAddress());
+                                    IPPacket.PACKET.swapIpAddresses();
                                     Log.d(TAG, "Test response: " + new String(responseData));
-
-                                    // TODO: assign IP addresses
-                                    IPPacket.PACKET.swapPortNumbers();
 
                                     int ipHeader = IPPacket.PACKET.getIpHeaderLength();
                                     int transportHeader = IPPacket.PACKET.getTransportLayerHeaderLength();
-                                    int headers = ipHeader + transportHeader;
-                                    IPPacket.PACKET.setTotalLength(headers + testResponseLen);
-                                    IPPacket.PACKET.setPayload(headers, responseData);
+                                    int headerLengths = ipHeader + transportHeader;
+                                    IPPacket.PACKET.setTotalLength(headerLengths + testResponseLen);
+                                    IPPacket.PACKET.setPayload(headerLengths, responseData);
+                                    /*
+                                     * Before computing the checksum of the IP header:
+                                     * 
+                                     * 1. Swap IP addresses.
+                                     * 2. Calculate the total length.
+                                     * 3. Identification (later)
+                                     */
+                                    IPPacket.PACKET.calculateIpHeaderCheckSum();
+                                    
+                                    IPPacket.PACKET.swapPortNumbers();
+                                    IPPacket.PACKET.setUdpHeaderAndDataLength(transportHeader + responseData.length);
+                                    /*
+                                     * Before computing the checksum of the UDP header and data:
+                                     * 1. Swap the port numbers.
+                                     * 2. Set the response data (setPayload).
+                                     * 3. Set the UDP header and data length.
+                                     */
+                                    byte []toOut = IPPacket.PACKET.getPacket(); // I can see this value in the debugger. It's not used and can be deleted
                                     out.write(IPPacket.PACKET.getPacket(), 0, IPPacket.PACKET.getTotalLength());
                                 } catch (IOException e) {
                                     Log.e(TAG, "", e);
@@ -168,7 +181,6 @@ public class NoRootFwService extends VpnService implements Runnable {
                                 throw new IllegalStateException("Failed to create a protected socket");
                             }
                         }
-
                         break;
                     default:
                         break;
@@ -196,6 +208,7 @@ public class NoRootFwService extends VpnService implements Runnable {
                 Log.e(TAG, "Got " + e.toString(), e);
             }
             mInterface = null;
+            IPPacket.PACKET.reset();
             Log.i(TAG, "Exiting");
         }
     }
@@ -232,11 +245,10 @@ public class NoRootFwService extends VpnService implements Runnable {
          * The index of the octet of the TCP header where the flags, such as SYN, ACK, are stored.
          */
         static final int TCP_FLAGS_INDEX = 13;
-        static final int TRANSPORT_LAYER_SRC_PORT_HIGH_BYTE_INDEX = 0;
         static final int TRANSPORT_LAYER_DST_PORT_HIGH_BYTE_INDEX = 2;
         static final int TRANSPORT_LAYER_SPACE_IN_BYTES = 2;
         static final int TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX = 3;
-
+        static final int TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX = 4;
         /**
          * A UDP header length
          */
@@ -250,6 +262,8 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int IP_TOTAL_LENGTH_HIGH_BYTE_INDEX = 2;
         static final int IP_TOTAL_LENGTH_LOW_BYTE_INDEX = 3;
         static final int IP_PROTOCOL_FIELD = 9;
+        static final int IP_CHECKSUM_1 = 10;
+        static final int IP_CHECKSUM_2 = 11;
         static final int IP_SRC_IP_ADDRESS_INDEX = 12;
         static final int IP_DST_IP_ADDRESS_INDEX = 16;
 
@@ -278,6 +292,17 @@ public class NoRootFwService extends VpnService implements Runnable {
             mDstIpAddress = Arrays.copyOfRange(mPacket, IP_DST_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
         }
 
+        /**
+         * Reset {@link #mPacket} and all the other fields initialized in {@link #setPacket(byte[])}
+         * not to see them during the next iteration. Call this method when
+         */
+        private void reset() {
+            mPacket = null;
+            mPayload = null;
+            mSrcIpAddress = null;
+            mDstIpAddress = null;
+        }
+
         byte[] getPacket() {
             return mPacket;
         }
@@ -301,19 +326,21 @@ public class NoRootFwService extends VpnService implements Runnable {
             return mPayload;
         }
 
-        void setPayload(int headers, byte[] payload) {
-            System.arraycopy(payload, 0, mPacket, headers, payload.length);
+        /**
+         * 
+         * @param headerLengths it's an offset
+         * @param payload
+         */
+        void setPayload(int headerLengths, byte[] payload) {
+            System.arraycopy(payload, 0, mPacket, headerLengths, payload.length);
             mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
         }
-
-        void setSrcIpAddress(byte[] address) {
-            System.arraycopy(address, 0, mPacket, IP_SRC_IP_ADDRESS_INDEX, address.length);
-            mSrcIpAddress = Arrays.copyOfRange(mPacket, IP_SRC_IP_ADDRESS_INDEX, IP_SRC_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
-        }
-
-        void setDstIpAddress(byte[] address) {
-            System.arraycopy(address, 0, mPacket, IP_DST_IP_ADDRESS_INDEX, address.length);
-            mDstIpAddress = Arrays.copyOfRange(mPacket, IP_DST_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
+        
+        private void setUdpHeaderAndDataLength(int length) {
+            int offset = getIpHeaderLength();
+            byte []lengthAsArray = convertPositiveIntToBytes(length);
+            mPacket[offset + TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX] = lengthAsArray[0];
+            mPacket[offset + TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX + 1] = lengthAsArray[1];
         }
 
         private static int convertMultipleBytesToPositiveInt(byte... bytes) {
@@ -321,7 +348,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             value += convertByteToPositiveInt(bytes[1]);
             return value;
         }
-
+        
         static byte[] convertPositiveIntToBytes(int src) {
             byte[] result = new byte[2];
             result[1] = (byte) (255 & src);
@@ -448,17 +475,100 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
 
         void swapPortNumbers() {
-            int srcStart = getIpHeaderLength();
-            int dstStart = srcStart + TRANSPORT_LAYER_SPACE_IN_BYTES;
-            for (int i = 0; i < TRANSPORT_LAYER_SPACE_IN_BYTES; i++) {
+            swapRanges(getIpHeaderLength(), TRANSPORT_LAYER_SPACE_IN_BYTES);
+        }
+        
+        void swapIpAddresses() {
+            swapRanges(IP_SRC_IP_ADDRESS_INDEX, IP_ADDRESS_LENGTH);
+            mSrcIpAddress = Arrays.copyOfRange(mPacket, IP_SRC_IP_ADDRESS_INDEX, IP_SRC_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
+            mDstIpAddress = Arrays.copyOfRange(mPacket, IP_DST_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
+        }
+        
+        private void swapRanges(int start, int length) {
+            for (int i = 0; i < length; i++) {
                 byte temp = 0;
-                temp = mPacket[srcStart];
-                mPacket[srcStart] = mPacket[dstStart];
-                mPacket[dstStart] = temp;
-                srcStart++;
-                dstStart++;
-
+                temp = mPacket[start];
+                int secondRangeStart = start + length;
+                mPacket[start] = mPacket[secondRangeStart];
+                mPacket[secondRangeStart] = temp;
+                start++;
+                secondRangeStart++;
             }
+        }
+        
+        void calculateIpHeaderCheckSum() {
+             byte [] ipv4Header = Arrays.copyOfRange(mPacket, 0, getIpHeaderLength());
+             // Assign 0 values to the checksum bytes themselves
+             ipv4Header[IP_CHECKSUM_1] = 0;
+             ipv4Header[IP_CHECKSUM_2] = 0;
+             long checksum = calculateChecksum(ipv4Header);
+             
+             /*
+              * This casting is safe because we only need two low bytes.
+              * 
+              * Maksim Dmitriev
+              * April 14, 2015
+              */
+             byte []checksumAsArray = convertPositiveIntToBytes((int) checksum);
+             System.arraycopy(checksumAsArray, 0, mPacket, IP_CHECKSUM_1, checksumAsArray.length);
+        }
+
+        /**
+         * http://stackoverflow.com/a/4114507/1065835
+         * 
+         * <br>
+         * Calculate the Internet Checksum of a buffer (RFC 1071 -
+         * http://www.faqs.org/rfcs/rfc1071.html)
+         * Algorithm is
+         * 1) apply a 16-bit 1's complement sum over all octets (adjacent 8-bit pairs [A,B], final
+         * odd length is [A,0])
+         * 2) apply 1's complement to this final sum
+         *
+         * Notes:
+         * 1's complement is bitwise NOT of positive value.
+         * Ensure that any carry bits are added back to avoid off-by-one errors
+         *
+         *
+         * @param buf The message
+         * @return The checksum
+         */
+        static long calculateChecksum(byte[] buf) {
+            int length = buf.length;
+            int i = 0;
+
+            long sum = 0;
+            long data;
+
+            // Handle all pairs
+            while (length > 1) {
+                // Corrected to include @Andy's edits and various comments on Stack Overflow
+                data = (((buf[i] << 8) & 0xFF00) | ((buf[i + 1]) & 0xFF));
+                sum += data;
+                // 1's complement carry bit correction in 16-bits (detecting sign extension)
+                if ((sum & 0xFFFF0000) > 0) {
+                    sum = sum & 0xFFFF;
+                    sum += 1;
+                }
+
+                i += 2;
+                length -= 2;
+            }
+
+            // Handle remaining byte in odd length buffers
+            if (length > 0) {
+                // Corrected to include @Andy's edits and various comments on Stack Overflow
+                sum += (buf[i] << 8 & 0xFF00);
+                // 1's complement carry bit correction in 16-bits (detecting sign extension)
+                if ((sum & 0xFFFF0000) > 0) {
+                    sum = sum & 0xFFFF;
+                    sum += 1;
+                }
+            }
+
+            // Final 1's complement value correction to 16-bits
+            sum = ~sum;
+            sum = sum & 0xFFFF;
+            return sum;
         }
     }
 }
