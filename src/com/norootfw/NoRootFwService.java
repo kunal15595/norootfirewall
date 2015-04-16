@@ -164,6 +164,7 @@ public class NoRootFwService extends VpnService implements Runnable {
                                     
                                     IPPacket.PACKET.swapPortNumbers();
                                     IPPacket.PACKET.setUdpHeaderAndDataLength(transportHeader + responseData.length);
+                                    IPPacket.PACKET.calculateUdpCheckSum();
                                     /*
                                      * Before computing the checksum of the UDP header and data:
                                      * 1. Swap the port numbers.
@@ -249,6 +250,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int TRANSPORT_LAYER_SPACE_IN_BYTES = 2;
         static final int TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX = 3;
         static final int TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX = 4;
+        static final int TCP_CHECKSUM_1 = 7;
         /**
          * A UDP header length
          */
@@ -512,6 +514,21 @@ public class NoRootFwService extends VpnService implements Runnable {
              byte []checksumAsArray = convertPositiveIntToBytes((int) checksum);
              System.arraycopy(checksumAsArray, 0, mPacket, IP_CHECKSUM_1, checksumAsArray.length);
         }
+        
+        void calculateUdpCheckSum() {
+            // TODO: if you want to use mPacket.length, you'll need to reallocate it. There sholdn't be old data
+            byte [] udpAndData = Arrays.copyOfRange(mPacket, getIpHeaderLength(), mPacket.length);
+            long checksum = calculateChecksum(udpAndData);
+            
+            /*
+             * This casting is safe because we only need two low bytes.
+             * 
+             * Maksim Dmitriev
+             * April 14, 2015
+             */
+            byte []checksumAsArray = convertPositiveIntToBytes((int) checksum);
+            System.arraycopy(checksumAsArray, 0, mPacket, TCP_CHECKSUM_1, checksumAsArray.length);
+       }
 
         /**
          * http://stackoverflow.com/a/4114507/1065835
