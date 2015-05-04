@@ -15,4 +15,10 @@
         android:layout_height="wrap_content"
         android:text="@string/enable_firewall" />
 
+    <Button
+        android:id="@+id/security_settings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/security_settings" />
+
 </LinearLayout>

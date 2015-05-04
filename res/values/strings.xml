@@ -3,8 +3,7 @@
 
     <string name="app_name">NoRootFirewall</string>
     <string name="enable_firewall">Enable Firewall</string>
-    <string name="send_tcp_request">Send a TCP Request</string>
-    <string name="send_udp_request">Send a UDP Request</string>
-    <string name="action_settings">Settings</string>
+    <string name="security_settings">Security Settings</string>
+    <string name="black_list">Black List</string>
 
 </resources>

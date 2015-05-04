@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Межсетевой экран</string>
+    <string name="enable_firewall">Включить защиту</string>
+    <string name="security_settings">Настройки безопасности</string>
+    <string name="black_list">Черный список</string>
+
+</resources>
