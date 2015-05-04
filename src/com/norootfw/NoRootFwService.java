@@ -164,14 +164,13 @@ public class NoRootFwService extends VpnService implements Runnable {
                                     
                                     IPPacket.PACKET.swapPortNumbers();
                                     IPPacket.PACKET.setUdpHeaderAndDataLength(transportHeader + responseData.length);
-                                    IPPacket.PACKET.calculateUdpCheckSum();
                                     /*
                                      * Before computing the checksum of the UDP header and data:
                                      * 1. Swap the port numbers.
                                      * 2. Set the response data (setPayload).
                                      * 3. Set the UDP header and data length.
                                      */
-                                    byte []toOut = IPPacket.PACKET.getPacket(); // I can see this value in the debugger. It's not used and can be deleted
+                                    IPPacket.PACKET.updateUdpCheckSum();
                                     out.write(IPPacket.PACKET.getPacket(), 0, IPPacket.PACKET.getTotalLength());
                                 } catch (IOException e) {
                                     Log.e(TAG, "", e);
@@ -230,6 +229,7 @@ public class NoRootFwService extends VpnService implements Runnable {
 
         PACKET;
 
+        private static final int IPV4_PSEUDO_HEADER_LENGTH = 20;
         /**
          * We multiply the number of 32-bit words by 4 to get the number of bytes.
          */
@@ -251,6 +251,8 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX = 3;
         static final int TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX = 4;
         static final int TCP_CHECKSUM_1 = 7;
+        
+        static final int UDP_CHECKSUM_1 = 6;
         /**
          * A UDP header length
          */
@@ -277,11 +279,21 @@ public class NoRootFwService extends VpnService implements Runnable {
 
         // Destination ports
         static final int DST_PORT_DNS = 53;
+        
+        // IPv4 pseudo header
+        static final int IP_PSEUDO_SRC_IP = 0;
+        static final int IP_PSEUDO_DST_IP = 4;
+        static final int IP_PSEUDO_ZEROS = 8;
+        static final int IP_PSEUDO_PROTOCOL = 9;
+        // The entity takes two bytes
+        static final int IP_PSEUDO_UDP_LENGTH_1 = 10;
+        static final int IP_PSEUDO_UDP_HEADER_START = 12;
 
         byte[] mPacket;
         byte[] mPayload;
         byte[] mSrcIpAddress;
         byte[] mDstIpAddress;
+        byte[] mIpv4PseudoHeader = new byte[IPV4_PSEUDO_HEADER_LENGTH];
 
         void setPacket(byte[] packet) {
             /*
@@ -303,6 +315,9 @@ public class NoRootFwService extends VpnService implements Runnable {
             mPayload = null;
             mSrcIpAddress = null;
             mDstIpAddress = null;
+            for (int i = 0; i < mIpv4PseudoHeader.length; i++) {
+                mIpv4PseudoHeader[i] = 0;
+            }
         }
 
         byte[] getPacket() {
@@ -515,19 +530,30 @@ public class NoRootFwService extends VpnService implements Runnable {
              System.arraycopy(checksumAsArray, 0, mPacket, IP_CHECKSUM_1, checksumAsArray.length);
         }
         
-        void calculateUdpCheckSum() {
-            // TODO: if you want to use mPacket.length, you'll need to reallocate it. There sholdn't be old data
-            byte [] udpAndData = Arrays.copyOfRange(mPacket, getIpHeaderLength(), mPacket.length);
-            long checksum = calculateChecksum(udpAndData);
-            
+        void updateUdpCheckSum() {
+            // Fill mIpv4PseudoHeader
+            System.arraycopy(mPacket, IP_SRC_IP_ADDRESS_INDEX, mIpv4PseudoHeader, IP_PSEUDO_SRC_IP, IP_ADDRESS_LENGTH);
+            System.arraycopy(mPacket, IP_DST_IP_ADDRESS_INDEX, mIpv4PseudoHeader, IP_PSEUDO_DST_IP, IP_ADDRESS_LENGTH);
+            mIpv4PseudoHeader[IP_PSEUDO_ZEROS] = 0;
+            mIpv4PseudoHeader[IP_PSEUDO_PROTOCOL] = TRANSPORT_PROTOCOL_UDP;
+            byte []udpLength = new byte[] {
+                    mPacket[getIpHeaderLength() + TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX],
+                    mPacket[getIpHeaderLength() + TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX + 1]
+            };
+            System.arraycopy(udpLength, 0, mIpv4PseudoHeader, IP_PSEUDO_UDP_LENGTH_1, udpLength.length);
+            // Copy the UDP header itself
+            System.arraycopy(mPacket, getIpHeaderLength(), mIpv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START, UDP_HEADER_LENGTH);
+            long checksum = calculateChecksum(mIpv4PseudoHeader);   
             /*
-             * This casting is safe because we only need two low bytes.
+             * This casting is safe because the value takes two bytes. If it didn't, they would
+             * have allocate more space when they were developing the protocol
              * 
              * Maksim Dmitriev
-             * April 14, 2015
+             * May 4, 2015
              */
+            // TODO: finish
             byte []checksumAsArray = convertPositiveIntToBytes((int) checksum);
-            System.arraycopy(checksumAsArray, 0, mPacket, TCP_CHECKSUM_1, checksumAsArray.length);
+            System.arraycopy(checksumAsArray, 0, mPacket, getIpHeaderLength() + TCP_CHECKSUM_1, checksumAsArray.length);
        }
 
         /**
