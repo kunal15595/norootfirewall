@@ -15,10 +15,10 @@ public class MainActivity extends Activity implements OnClickListener {
 
     private static final int ENABLE_FIREWALL_REQ_CODE = 0x01;
     private Button mFirewall;
-    
+
     private static final IntentFilter FILTER_SERVICE_STARTED = new IntentFilter(NoRootFwService.ACTION_SERVICE_STARTED);
     private BroadcastReceiver mServiceStartReceiver = new BroadcastReceiver() {
-        
+
         @Override
         public void onReceive(Context context, Intent intent) {
             mFirewall.setEnabled(false);
@@ -31,21 +31,22 @@ public class MainActivity extends Activity implements OnClickListener {
         setContentView(R.layout.activity_main);
         mFirewall = (Button) findViewById(R.id.enable_firewall);
         mFirewall.setOnClickListener(this);
+        findViewById(R.id.security_settings).setOnClickListener(this);
     }
-    
+
     @Override
     protected void onPause() {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mServiceStartReceiver);
         super.onPause();
     }
-    
+
     @Override
     protected void onResume() {
         super.onResume();
         LocalBroadcastManager.getInstance(this).registerReceiver(mServiceStartReceiver, FILTER_SERVICE_STARTED);
         if (NoRootFwService.isRun()) {
             mFirewall.setEnabled(false);
-        } else{
+        } else {
             mFirewall.setEnabled(true);
         }
     }
@@ -60,6 +61,9 @@ public class MainActivity extends Activity implements OnClickListener {
             } else {
                 onActivityResult(ENABLE_FIREWALL_REQ_CODE, RESULT_OK, null);
             }
+            break;
+        case R.id.security_settings:
+            startActivity(new Intent(this, SecuritySettingsActivity.class));
             break;
         }
     }
