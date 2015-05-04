@@ -30,6 +30,7 @@ public class NoRootFwService extends VpnService implements Runnable {
     }
 
     private static final String TAG = NoRootFwService.class.getSimpleName();
+    private static final String TAG_2 = "UDPChecksum";
     private static final String TUN_DEVICE_ADDRESS = "10.0.2.1";
     private Thread mThread;
     private ParcelFileDescriptor mInterface;
@@ -120,7 +121,7 @@ public class NoRootFwService extends VpnService implements Runnable {
                         break;
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
                         if (IPPacket.PACKET.getDstIpAddressAsString().equals("192.168.1.197")) {
-                            Log.d(TAG, "Stop here");
+                            Log.d(TAG_2, "Sent == " + Arrays.toString(IPPacket.PACKET.getPacket()));
                             DatagramSocket datagramSocket = new DatagramSocket();
 
                             // TODO: delete the value
@@ -171,6 +172,7 @@ public class NoRootFwService extends VpnService implements Runnable {
                                      * 3. Set the UDP header and data length.
                                      */
                                     IPPacket.PACKET.updateUdpCheckSum();
+                                    Log.d(TAG_2, "To TUN == " + Arrays.toString(IPPacket.PACKET.getPacket()));
                                     out.write(IPPacket.PACKET.getPacket(), 0, IPPacket.PACKET.getTotalLength());
                                 } catch (IOException e) {
                                     Log.e(TAG, "", e);
@@ -228,8 +230,6 @@ public class NoRootFwService extends VpnService implements Runnable {
     private static enum IPPacket {
 
         PACKET;
-
-        private static final int IPV4_PSEUDO_HEADER_LENGTH = 20;
         /**
          * We multiply the number of 32-bit words by 4 to get the number of bytes.
          */
@@ -281,6 +281,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int DST_PORT_DNS = 53;
         
         // IPv4 pseudo header
+        private static final int IPV4_PSEUDO_HEADER_LENGTH = 20;
         static final int IP_PSEUDO_SRC_IP = 0;
         static final int IP_PSEUDO_DST_IP = 4;
         static final int IP_PSEUDO_ZEROS = 8;
@@ -293,7 +294,7 @@ public class NoRootFwService extends VpnService implements Runnable {
         byte[] mPayload;
         byte[] mSrcIpAddress;
         byte[] mDstIpAddress;
-        byte[] mIpv4PseudoHeader = new byte[IPV4_PSEUDO_HEADER_LENGTH];
+        private byte[] mIpv4PseudoHeader = new byte[IPV4_PSEUDO_HEADER_LENGTH];
 
         void setPacket(byte[] packet) {
             /*
@@ -541,8 +542,9 @@ public class NoRootFwService extends VpnService implements Runnable {
                     mPacket[getIpHeaderLength() + TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX + 1]
             };
             System.arraycopy(udpLength, 0, mIpv4PseudoHeader, IP_PSEUDO_UDP_LENGTH_1, udpLength.length);
-            // Copy the UDP header itself
-            System.arraycopy(mPacket, getIpHeaderLength(), mIpv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START, UDP_HEADER_LENGTH);
+            // Copy the UDP header itself without the last two bytes which contain the checksum
+            System.arraycopy(mPacket, getIpHeaderLength(), mIpv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START, UDP_HEADER_LENGTH - 2);
+            Log.d(TAG_2, "mIpv4PseudoHeader == " + Arrays.toString(mIpv4PseudoHeader));
             long checksum = calculateChecksum(mIpv4PseudoHeader);   
             /*
              * This casting is safe because the value takes two bytes. If it didn't, they would
@@ -551,9 +553,8 @@ public class NoRootFwService extends VpnService implements Runnable {
              * Maksim Dmitriev
              * May 4, 2015
              */
-            // TODO: finish
             byte []checksumAsArray = convertPositiveIntToBytes((int) checksum);
-            System.arraycopy(checksumAsArray, 0, mPacket, getIpHeaderLength() + TCP_CHECKSUM_1, checksumAsArray.length);
+            System.arraycopy(checksumAsArray, 0, mPacket, getIpHeaderLength() + UDP_CHECKSUM_1, checksumAsArray.length);
        }
 
         /**
