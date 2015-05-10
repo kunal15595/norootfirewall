@@ -97,6 +97,15 @@ struct sys_thread {
   pthread_t pthread;
 };
 
+/*
+	TODO: sys_arch_timeouts
+	http://lwip.wikia.com/wiki/Porting_for_an_OS
+	I may need them although the UNIX port doesn't contain them.
+	
+	Maksim Dmitriev
+	May 10, 2015
+*/
+
 #if SYS_LIGHTWEIGHT_PROT
 static pthread_mutex_t lwprot_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t lwprot_thread = (pthread_t)0xDEAD;
