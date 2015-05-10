@@ -507,6 +507,16 @@ sys_init(void)
 {
   gettimeofday(&starttime, NULL);
 }
+/*
+	As far as I understand now, sys_arch_protect and sys_arch_unprotect are not used by
+	lwIP. However, they can be used by client code if it needs to disable interrupts around critical 
+	blocks of code that should not be interrupted.
+
+	http://lwip.wikia.com/wiki/Porting_for_an_OS
+	Maksim Dmitriev
+	May 10, 2015
+	
+*/
 /*-----------------------------------------------------------------------------------*/
 #if SYS_LIGHTWEIGHT_PROT
 /** sys_prot_t sys_arch_protect(void)
