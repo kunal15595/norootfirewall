@@ -24,13 +24,21 @@ public class NoRootFwService extends VpnService implements Runnable {
     private static final int IP_PACKET_MAX_LENGTH = 65535;
     private static volatile boolean sServiceRun;
     public static final String ACTION_SERVICE_STARTED = "com.norootfw.intent.action.SERVICE_STARTED";
+    private static final Intent INTENT_SERVICE_STARTED = new Intent(ACTION_SERVICE_STARTED);
+    /*
+     * In fact the max. size of data equals to IP_PACKET_MAX_LENGTH - min. IP header length - transport-layer header length
+     * But the difference is negligible. So I use IP_PACKET_MAX_LENGTH
+     * 
+     * Maksim Dmitriev
+     * May 11, 2015
+     */
+    private byte []mResponseBuffer = new byte[IP_PACKET_MAX_LENGTH];
 
     static {
         System.loadLibrary("lwip");
     }
 
     private static final String TAG = NoRootFwService.class.getSimpleName();
-    private static final String TAG_2 = "UDPChecksum";
     private static final String TUN_DEVICE_ADDRESS = "10.0.2.1";
     private Thread mThread;
     private ParcelFileDescriptor mInterface;
@@ -71,121 +79,105 @@ public class NoRootFwService extends VpnService implements Runnable {
             throw new RuntimeException("Failed to create a TUN interface");
         }
         sServiceRun = true;
-        LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(ACTION_SERVICE_STARTED));
+        LocalBroadcastManager.getInstance(this).sendBroadcast(INTENT_SERVICE_STARTED);
         NoRootFwNative.initNative();
         // Packets to be sent are queued in this input stream.
         FileInputStream in = null;
         // Packets received need to be written to this output stream.
         FileOutputStream out = null;
         try {
-            Log.i(TAG, "Starting");
             in = new FileInputStream(mInterface.getFileDescriptor());
             out = new FileOutputStream(mInterface.getFileDescriptor());
             ByteBuffer byteBuffer = ByteBuffer.allocate(IP_PACKET_MAX_LENGTH);
             while (sServiceRun) {
-                // it DOESN'T null out values of the buffer's byte array
-                byteBuffer.clear();
-                final int read = in.read(byteBuffer.array());
-                // TODO: if IPv6, let the user know that it's not supported
+                int read = in.read(byteBuffer.array());
                 if (read > 0) {
-                    final int packetSize = IPPacket.convertMultipleBytesToPositiveInt(byteBuffer.array()[IPPacket.IP_TOTAL_LENGTH_HIGH_BYTE_INDEX], byteBuffer.array()[IPPacket.IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
-                    byte[] packet = new byte[packetSize];
-                    byteBuffer.get(packet);
-                    IPPacket.PACKET.setPacket(packet);
+                    // TODO: if IPv6 is possible, let the user know that it's not supported
                     /*
-                     * I used to think that DNS requests are
-                     * not performed, but it turned out they were.
+                     * It's a shallow copy.
                      * 
                      * Maksim Dmitriev
-                     * January 9, 2015
+                     * May 11, 2015
                      */
-                    if (true) {
-                        final byte protocol = IPPacket.PACKET.getProtocol();
+                    IPPacket.PACKET.setPacket(byteBuffer.array());
+                    int protocol = IPPacket.PACKET.getProtocol();
+                    if (isTestDstAddress()) {
                         Log.d(TAG, "DST port: " + IPPacket.PACKET.getDstPort() +
-                                " Transport-layer protocol: " + protocol +
+                                " Transport-layer protocol: " +
                                 (protocol == IPPacket.TRANSPORT_PROTOCOL_TCP ?
-                                        " TCP flags: " +
-                                                IPPacket.PACKET.getPacket()[IPPacket.PACKET.getIpHeaderLength() + IPPacket.TCP_FLAGS_INDEX] : "") +
+                                        "TCP, flags: " +
+                                                IPPacket.PACKET.getPacket()[IPPacket.PACKET.getIpHeaderLength() + IPPacket.TCP_FLAGS_INDEX] : "UDP") +
                                 " SRC: " + IPPacket.PACKET.getSrcIpAddressAsString() +
                                 " DST: " + IPPacket.PACKET.getDstIpAddressAsString());
                     }
-                    if (IPPacket.PACKET.getDstPort() == IPPacket.DST_PORT_DNS) {
-                        // TODO: create a protected socket and perform a DNS request
-                    }
-                    switch (IPPacket.PACKET.getProtocol()) {
+                    switch (protocol) {
                     case IPPacket.TRANSPORT_PROTOCOL_TCP:
-                        if (IPPacket.PACKET.isSyn()) {
-                            // TODO: receive SYN+ACK and write it to the TUN device
-                            NoRootFwNative.sendSyn(IPPacket.PACKET.getPacket(),
-                                    IPPacket.PACKET.getPayloadLength());
-                        }
+                        // TODO
                         break;
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
-                        if (IPPacket.PACKET.getDstIpAddressAsString().equals("192.168.1.197")) {
-                            Log.d(TAG_2, "Sent == " + Arrays.toString(IPPacket.PACKET.getPacket()));
-                            DatagramSocket datagramSocket = new DatagramSocket();
-
-                            // TODO: delete the value
-                            int testResponseLen = 6;
-                            if (protect(datagramSocket)) {
-
-                                /*
-                                 * Handle an IOException if anything goes wrong with a data transfer
-                                 * done by the protected socket.
-                                 * 
-                                 * Maksim Dmitriev
-                                 * April 12, 2015
-                                 */
-                                try {
-                                    DatagramPacket request = new DatagramPacket(IPPacket.PACKET.getPayload(),
-                                            IPPacket.PACKET.getPayload().length,
-                                            Inet4Address.getByAddress(IPPacket.PACKET.getDstIpAddress()),
-                                            IPPacket.PACKET.getDstPort());
-                                    datagramSocket.send(request);
-
-                                    // Test. 1024 bytes
-                                    byte[] responseData = new byte[testResponseLen];
-                                    DatagramPacket response = new DatagramPacket(responseData, responseData.length);
-                                    datagramSocket.receive(response);
-                                    IPPacket.PACKET.swapIpAddresses();
-                                    Log.d(TAG, "Test response: " + new String(responseData));
-
-                                    int ipHeader = IPPacket.PACKET.getIpHeaderLength();
-                                    int transportHeader = IPPacket.PACKET.getTransportLayerHeaderLength();
-                                    int headerLengths = ipHeader + transportHeader;
-                                    IPPacket.PACKET.setTotalLength(headerLengths + testResponseLen);
-                                    IPPacket.PACKET.setPayload(headerLengths, responseData);
-                                    /*
-                                     * Before computing the checksum of the IP header:
-                                     * 
-                                     * 1. Swap IP addresses.
-                                     * 2. Calculate the total length.
-                                     * 3. Identification (later)
-                                     */
-                                    IPPacket.PACKET.calculateIpHeaderCheckSum();
-                                    
-                                    IPPacket.PACKET.swapPortNumbers();
-                                    IPPacket.PACKET.setUdpHeaderAndDataLength(transportHeader + responseData.length);
-                                    /*
-                                     * Before computing the checksum of the UDP header and data:
-                                     * 1. Swap the port numbers.
-                                     * 2. Set the response data (setPayload).
-                                     * 3. Set the UDP header and data length.
-                                     */
-                                    IPPacket.PACKET.updateUdpCheckSum();
-                                    Log.d(TAG_2, "To TUN == " + Arrays.toString(IPPacket.PACKET.getPacket()));
-                                    out.write(IPPacket.PACKET.getPacket(), 0, IPPacket.PACKET.getTotalLength());
-                                } catch (IOException e) {
-                                    Log.e(TAG, "", e);
-                                } finally {
-                                    datagramSocket.close();
+                        DatagramSocket datagramSocket = new DatagramSocket();
+                        if (protect(datagramSocket)) {
+                            /*
+                             * Handle an IOException if anything goes wrong with a data transfer
+                             * done by the protected socket.
+                             * 
+                             * Maksim Dmitriev
+                             * April 12, 2015
+                             */
+                            try {
+                                if (isTestDstAddress()) {
+                                    byte []sentPacket = Arrays.copyOfRange(byteBuffer.array(), 0, IPPacket.PACKET.getTotalLength());
+                                    Log.d(TAG, "UDP. Sent packet == " + Arrays.toString(sentPacket));   
                                 }
-                            } else {
-                                throw new IllegalStateException("Failed to create a protected socket");
+                                DatagramPacket request = new DatagramPacket(IPPacket.PACKET.getPayload(),
+                                        IPPacket.PACKET.getPayload().length,
+                                        Inet4Address.getByAddress(IPPacket.PACKET.getDstIpAddress()),
+                                        IPPacket.PACKET.getDstPort());
+                                datagramSocket.send(request);
+                                
+                                DatagramPacket responsePacket = new DatagramPacket(mResponseBuffer, mResponseBuffer.length);
+                                datagramSocket.receive(responsePacket);
+                                IPPacket.PACKET.swapIpAddresses();
+                                byte []responseData = Arrays.copyOfRange(mResponseBuffer, 0, responsePacket.getLength());
+                                if (isTestSrcAddress()) {
+                                    Log.d(TAG, "UDP response: " + new String(responseData));
+                                }
+                                int ipHeader = IPPacket.PACKET.getIpHeaderLength();
+                                int transportHeader = IPPacket.PACKET.getTransportLayerHeaderLength();
+                                int headerLengths = ipHeader + transportHeader;
+                                IPPacket.PACKET.setTotalLength(headerLengths + responseData.length);
+                                IPPacket.PACKET.setPayload(headerLengths, responseData);
+                                /*
+                                 * Before computing the checksum of the IP header:
+                                 * 
+                                 * 1. Swap IP addresses.
+                                 * 2. Calculate the total length.
+                                 * 3. Identification (later)
+                                 */
+                                IPPacket.PACKET.calculateIpHeaderCheckSum();
+                                
+                                IPPacket.PACKET.swapPortNumbers();
+                                IPPacket.PACKET.setUdpHeaderAndDataLength(transportHeader + responseData.length);
+                                /*
+                                 * Before computing the checksum of the UDP header and data:
+                                 * 1. Swap the port numbers.
+                                 * 2. Set the response data (setPayload).
+                                 * 3. Set the UDP header and data length.
+                                 */
+                                IPPacket.PACKET.updateUdpCheckSum();
+                                if (isTestSrcAddress()) {
+                                    byte []toTun = Arrays.copyOfRange(IPPacket.PACKET.getPacket(), 0, IPPacket.PACKET.getTotalLength());
+                                    Log.d(TAG, "To TUN == " + Arrays.toString(toTun));   
+                                }
+                                out.write(IPPacket.PACKET.getPacket(), 0, IPPacket.PACKET.getTotalLength());
+                            } catch (IOException e) {
+                                Log.e(TAG, "", e);
+                            } finally {
+                                datagramSocket.close();
                             }
+                        } else {
+                            throw new IllegalStateException("Failed to create a protected socket");
                         }
-                        break;
-                    default:
                         break;
                     }
                 }
@@ -214,6 +206,14 @@ public class NoRootFwService extends VpnService implements Runnable {
             IPPacket.PACKET.reset();
             Log.i(TAG, "Exiting");
         }
+    }
+    
+    private static boolean isTestDstAddress() {
+        return IPPacket.PACKET.getDstIpAddressAsString().equals("192.168.1.197");
+    }
+    
+    private static boolean isTestSrcAddress() {
+        return IPPacket.PACKET.getSrcIpAddressAsString().equals("192.168.1.197");
     }
 
     /**
@@ -251,7 +251,6 @@ public class NoRootFwService extends VpnService implements Runnable {
         static final int TRANSPORT_LAYER_SPACE_IN_BYTES = 2;
         static final int TRANSPORT_LAYER_DST_PORT_LOW_BYTE_INDEX = 3;
         static final int TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX = 4;
-        static final int TCP_CHECKSUM_1 = 7;
         
         static final int UDP_CHECKSUM_1 = 6;
         /**
@@ -277,9 +276,6 @@ public class NoRootFwService extends VpnService implements Runnable {
         // Transport-layer protocols
         static final byte TRANSPORT_PROTOCOL_TCP = 6;
         static final byte TRANSPORT_PROTOCOL_UDP = 17;
-
-        // Destination ports
-        static final int DST_PORT_DNS = 53;
         
         // IPv4 pseudo header
         private static final int IPV4_PSEUDO_HEADER_LENGTH = 20;
@@ -303,9 +299,9 @@ public class NoRootFwService extends VpnService implements Runnable {
              * assigning a new value.
              */
             mPacket = packet;
-            mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
             mSrcIpAddress = Arrays.copyOfRange(mPacket, IP_SRC_IP_ADDRESS_INDEX, IP_SRC_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
             mDstIpAddress = Arrays.copyOfRange(mPacket, IP_DST_IP_ADDRESS_INDEX, IP_DST_IP_ADDRESS_INDEX + IP_ADDRESS_LENGTH);
+            mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), getTotalLength());
         }
 
         /**
@@ -333,8 +329,9 @@ public class NoRootFwService extends VpnService implements Runnable {
          * @return
          */
         int getTotalLength() {
-            return convertMultipleBytesToPositiveInt(mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX],
+            int totalLength = convertMultipleBytesToPositiveInt(mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX],
                     mPacket[IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
+            return totalLength;
         }
 
         byte getProtocol() {
@@ -411,7 +408,8 @@ public class NoRootFwService extends VpnService implements Runnable {
          * @return the IP header length in bytes
          */
         int getIpHeaderLength() {
-            return (mPacket[IP_HEADER_LENGTH_INDEX] & IHL_MASK) * BIT_WORD_TO_BYTE_MULTIPLIER;
+            int result = (mPacket[IP_HEADER_LENGTH_INDEX] & IHL_MASK) * BIT_WORD_TO_BYTE_MULTIPLIER;
+            return result;
         }
 
         int getTransportLayerHeaderLength() {
@@ -545,7 +543,9 @@ public class NoRootFwService extends VpnService implements Runnable {
             System.arraycopy(udpLength, 0, mIpv4PseudoHeader, IP_PSEUDO_UDP_LENGTH_1, udpLength.length);
             // Copy the UDP header itself without the last two bytes which contain the checksum
             System.arraycopy(mPacket, getIpHeaderLength(), mIpv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START, UDP_HEADER_LENGTH - 2);
-            Log.d(TAG_2, "mIpv4PseudoHeader == " + Arrays.toString(mIpv4PseudoHeader));
+            if (isTestDstAddress()) {
+                Log.d(TAG, "mIpv4PseudoHeader == " + Arrays.toString(mIpv4PseudoHeader));   
+            }
             long checksum = calculateChecksum(mIpv4PseudoHeader);   
             /*
              * This casting is safe because the value takes two bytes. If it didn't, they would
