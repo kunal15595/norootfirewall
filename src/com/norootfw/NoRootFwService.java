@@ -86,6 +86,7 @@ public class NoRootFwService extends VpnService implements Runnable {
                 // it DOESN'T null out values of the buffer's byte array
                 byteBuffer.clear();
                 final int read = in.read(byteBuffer.array());
+                // TODO: if IPv6, let the user know that it's not supported
                 if (read > 0) {
                     final int packetSize = IPPacket.convertMultipleBytesToPositiveInt(byteBuffer.array()[IPPacket.IP_TOTAL_LENGTH_HIGH_BYTE_INDEX], byteBuffer.array()[IPPacket.IP_TOTAL_LENGTH_LOW_BYTE_INDEX]);
                     byte[] packet = new byte[packetSize];
