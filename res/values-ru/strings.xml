@@ -5,5 +5,7 @@
     <string name="enable_firewall">Включить защиту</string>
     <string name="security_settings">Настройки безопасности</string>
     <string name="black_list">Черный список</string>
+    <string name="ipv6_packets_captured">Пакеты IPv6 не поддерживаются приложением</string>
+    <string name="disable_firewall_to_proceeed">Отключите межсетевой экран, чтобы продолжить</string>
 
 </resources>

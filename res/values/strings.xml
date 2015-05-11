@@ -5,5 +5,7 @@
     <string name="enable_firewall">Enable Firewall</string>
     <string name="security_settings">Security Settings</string>
     <string name="black_list">Black List</string>
+    <string name="ipv6_packets_captured">IPv6 packets cannot be handled by the app</string>
+    <string name="disable_firewall_to_proceeed">Please disable the firewall to allow the traffic</string>
 
 </resources>
