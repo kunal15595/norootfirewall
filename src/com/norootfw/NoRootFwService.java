@@ -71,9 +71,9 @@ public class NoRootFwService extends VpnService implements Runnable {
     @Override
     public void run() {
         mInterface = new Builder().setSession(getString(R.string.app_name))
-                .addAddress(TUN_DEVICE_ADDRESS, TUN_DEVICE_ADDRESS_PREFIX_LENGTH)
-                .addRoute(ROUTE_1, ROUTE_PREFIX_LENGTH)
-                .addRoute(ROUTE_2, ROUTE_PREFIX_LENGTH)
+                .addAddress("26.26.26.26", 24)
+                .addRoute("0.0.0.0", 0)
+                .setMtu(1500)
                 .establish();
         if (mInterface == null) {
             throw new RuntimeException("Failed to create a TUN interface");
@@ -543,7 +543,7 @@ public class NoRootFwService extends VpnService implements Runnable {
             System.arraycopy(udpLength, 0, mIpv4PseudoHeader, IP_PSEUDO_UDP_LENGTH_1, udpLength.length);
             // Copy the UDP header itself without the last two bytes which contain the checksum
             System.arraycopy(mPacket, getIpHeaderLength(), mIpv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START, UDP_HEADER_LENGTH - 2);
-            if (isTestDstAddress()) {
+            if (isTestSrcAddress()) {
                 Log.d(TAG, "mIpv4PseudoHeader == " + Arrays.toString(mIpv4PseudoHeader));   
             }
             long checksum = calculateChecksum(mIpv4PseudoHeader);   
