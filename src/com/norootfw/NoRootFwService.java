@@ -35,7 +35,6 @@ public class NoRootFwService extends VpnService implements Runnable {
     }
 
     private static final String TAG = NoRootFwService.class.getSimpleName();
-    private static final String TUN_DEVICE_ADDRESS = "10.0.2.1";
     private Thread mThread;
     private ParcelFileDescriptor mInterface;
 
