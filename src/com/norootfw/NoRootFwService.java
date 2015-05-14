@@ -17,10 +17,6 @@ import java.util.Arrays;
 
 public class NoRootFwService extends VpnService implements Runnable {
 
-    private static final int TUN_DEVICE_ADDRESS_PREFIX_LENGTH = 24;
-    private static final int ROUTE_PREFIX_LENGTH = 1;
-    private static final String ROUTE_2 = "128.0.0.0";
-    private static final String ROUTE_1 = "0.0.0.0";
     private static final int IP_PACKET_MAX_LENGTH = 65535;
     private static volatile boolean sServiceRun;
     public static final String ACTION_SERVICE_STARTED = "com.norootfw.intent.action.SERVICE_STARTED";
@@ -71,7 +67,7 @@ public class NoRootFwService extends VpnService implements Runnable {
     @Override
     public void run() {
         mInterface = new Builder().setSession(getString(R.string.app_name))
-                .addAddress("26.26.26.26", 24)
+                .addAddress("10.0.2.1", 24)
                 .addRoute("0.0.0.0", 0)
                 .setMtu(1500)
                 .establish();
