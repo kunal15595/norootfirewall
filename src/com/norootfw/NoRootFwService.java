@@ -12,9 +12,16 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
+import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+/*
+ * TODO: create callback methods which you'll call from native code.
+ * 
+ * 1. onSynAckReceived(byte []synAckPacket): after sendSyn() has finished its job, and a SYN+ACK is created
+ * 2.
+ */
 public class NoRootFwService extends VpnService implements Runnable {
 
     private static final int IP_PACKET_MAX_LENGTH = 65535;
@@ -68,14 +75,13 @@ public class NoRootFwService extends VpnService implements Runnable {
         mInterface = new Builder().setSession(getString(R.string.app_name))
                 .addAddress("10.0.2.1", 24)
                 .addRoute("0.0.0.0", 0)
-                .setMtu(1500)
                 .establish();
         if (mInterface == null) {
             throw new RuntimeException("Failed to create a TUN interface");
         }
         sServiceRun = true;
         LocalBroadcastManager.getInstance(this).sendBroadcast(INTENT_SERVICE_STARTED);
-        NoRootFwNative.initNative();
+        initNative();
         // Packets to be sent are queued in this input stream.
         FileInputStream in = null;
         // Packets received need to be written to this output stream.
@@ -108,6 +114,23 @@ public class NoRootFwService extends VpnService implements Runnable {
                     switch (protocol) {
                     case IPPacket.TRANSPORT_PROTOCOL_TCP:
                         // TODO
+                        if (IPPacket.PACKET.isSyn()) {
+                            sendSyn(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPacket().length);
+                        } else if (IPPacket.PACKET.isAck()) {
+                            sendAck(IPPacket.PACKET.getPacket(), IPPacket.PACKET.getPacket().length);
+                        } else {
+                            // A request itself
+                            Socket protectedSocket = new Socket();
+                            if (protect(protectedSocket)) {
+                                sendRequest(IPPacket.PACKET.getPacket(), protectedSocket);
+                                // TODO: There may be TCP flags I should take into account
+                                try {
+                                    protectedSocket.close();
+                                } catch (IOException e) {}
+                            } else {
+                                throw new IllegalStateException("Failed to create a protected socket");
+                            }
+                        }
                         break;
                     case IPPacket.TRANSPORT_PROTOCOL_UDP:
                         DatagramSocket datagramSocket = new DatagramSocket();
@@ -203,6 +226,43 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
     }
     
+    private native void sendSyn(byte[] packet, int length);
+
+    private native void initNative();
+
+    private native void sendAck(byte[] packet, int length);
+    
+    private native void sendRequest(byte []packet, Socket protectedSocket);
+    
+    /** 
+     * Called from native code.
+     */
+    private void onSynAckReceived(byte []synAckPacket) {
+        // TODO: write it to TUN
+    }
+    
+    /** 
+     * Called from native code.
+     */
+    private void tcpListenCb() {
+        // TODO: 
+        // After an ACK (step 3 out of 3 of the handshaking process) is processed
+    }
+    
+    /** 
+     * Called from native code.
+     */
+    private void ipOutputCb(byte []response) {
+        // TODO: write it to TUN
+        // A response itself is ready to be written to the TUN device.
+    }
+    
+    private void tcpSentCb(int seqNumber) {
+        // TODO:
+        // This method is called from ipOutputCb after it has successfully written the response 
+        // to the TUN device.
+    }
+
     private static boolean isTestDstAddress() {
         return IPPacket.PACKET.getDstIpAddressAsString().equals("192.168.1.197");
     }
@@ -231,7 +291,9 @@ public class NoRootFwService extends VpnService implements Runnable {
          */
         static final int BIT_WORD_TO_BYTE_MULTIPLIER = 4;
         static final int IHL_MASK = 0x0f;
-        static final int TCP_FLAGS_SYN_MASK = 0x02;
+        static final int TCP_FLAGS_SYN_BIT = 0x02;
+        static final int TCP_FLAGS_ACK_BIT = 0x10;
+
         static final int INTEGER_COMPLEMENT = 256;
 
         /**
@@ -433,15 +495,6 @@ public class NoRootFwService extends VpnService implements Runnable {
             }
         }
 
-        /**
-         * Payload without TCP and IP headers
-         *
-         * @return
-         */
-        int getPayloadLength() {
-            return getTotalLength() - getIpHeaderLength() - getTransportLayerHeaderLength();
-        }
-
         void setTotalLength(int length) {
             byte[] lengthAsBytes = convertPositiveIntToBytes(length);
             mPacket[IP_TOTAL_LENGTH_HIGH_BYTE_INDEX] = lengthAsBytes[0];
@@ -449,7 +502,11 @@ public class NoRootFwService extends VpnService implements Runnable {
         }
 
         boolean isSyn() {
-            return (mPacket[getIpHeaderLength() + TCP_FLAGS_INDEX] & TCP_FLAGS_SYN_MASK) != 0;
+            return (mPacket[getIpHeaderLength() + TCP_FLAGS_INDEX] & 0xff) == TCP_FLAGS_SYN_BIT;
+        }
+        
+        boolean isAck() {
+            return (mPacket[getIpHeaderLength() + TCP_FLAGS_INDEX] & 0xff) == TCP_FLAGS_ACK_BIT;
         }
 
         /**
