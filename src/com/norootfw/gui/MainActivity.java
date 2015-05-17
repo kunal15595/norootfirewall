@@ -1,4 +1,4 @@
-package com.norootfw;
+package com.norootfw.gui;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -10,6 +10,9 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+
+import com.norootfw.R;
+import com.norootfw.service.NoRootFwService;
 
 public class MainActivity extends Activity implements OnClickListener {
 

@@ -1,7 +1,9 @@
-package com.norootfw;
+package com.norootfw.gui;
 
 import android.os.Bundle;
 import android.preference.PreferenceActivity;
+
+import com.norootfw.R;
 
 public class SecuritySettingsActivity extends PreferenceActivity {
 

@@ -1,4 +1,4 @@
-package com.norootfw;
+package com.norootfw.utils;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;

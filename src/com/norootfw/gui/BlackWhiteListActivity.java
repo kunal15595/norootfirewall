@@ -1,4 +1,4 @@
-package com.norootfw;
+package com.norootfw.gui;
 
 import android.app.ListActivity;
 import android.os.Bundle;

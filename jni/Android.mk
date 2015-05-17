@@ -65,7 +65,7 @@ LOCAL_SRC_FILES := \
 	./lwip-1.4.1/src/netif/ppp/vj.c \
 	./lwip-1.4.1/src/netif/slipif.c \
 	./lwip-1.4.1/src/sys_arch.c \
-	./no_root_firewall_jni.c
+	./com_norootfw_NoRootFwService.c
 
 LOCAL_LDLIBS := -llog
 

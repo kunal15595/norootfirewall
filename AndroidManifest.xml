@@ -16,7 +16,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name=".MainActivity"
+            android:name="com.norootfw.gui.MainActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -24,11 +24,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="com.norootfw.BlackWhiteListActivity" />
-        <activity android:name="com.norootfw.SecuritySettingsActivity" />
+        <activity android:name="com.norootfw.gui.BlackWhiteListActivity" />
+        <activity android:name="com.norootfw.gui.SecuritySettingsActivity" />
 
         <service
-            android:name=".NoRootFwService"
+            android:name="com.norootfw.service.NoRootFwService"
             android:permission="android.permission.BIND_VPN_SERVICE" >
             <intent-filter>
                 <action android:name="android.net.VpnService" />
