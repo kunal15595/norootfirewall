@@ -326,8 +326,6 @@ enum IPPacket {
                 mPacket[getIpHeaderLength() + TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX + 1]
         };
         System.arraycopy(udpLength, 0, ipv4PseudoHeader, IP_PSEUDO_UDP_LENGTH_FIELD_1, udpLength.length);
-        // Copy the UDP header itself without the last two bytes which contain the checksum
-//        System.arraycopy(mPacket, getIpHeaderLength(), ipv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START, UDP_HEADER_LENGTH - 2);
         if (NoRootFwService.isTestSrcAddress()) {
             Log.d(NoRootFwService.TAG, "ipv4PseudoHeader == " + Arrays.toString(ipv4PseudoHeader));   
         }
