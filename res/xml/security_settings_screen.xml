@@ -4,7 +4,7 @@
     <ListPreference
         android:defaultValue="@string/filtering_mode_default_value"
         android:dialogTitle="@string/filtering_mode"
-        android:entries="@array/filtering_mode_entries"
+        android:entries="@array/filtering_mode_titles"
         android:entryValues="@array/filtering_mode_values"
         android:key="@string/filtering_mode_key"
         android:title="@string/filtering_mode" />

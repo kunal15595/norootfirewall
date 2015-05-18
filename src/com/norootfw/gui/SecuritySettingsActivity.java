@@ -20,6 +20,7 @@ public class SecuritySettingsActivity extends PreferenceActivity implements
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.security_settings_screen);
         mFilteringMode = (ListPreference) findPreference(getString(R.string.filtering_mode_key));
+        mFilteringModeValues = getResources().getStringArray(R.array.filtering_mode_values);
 
         String currentValue = mFilteringMode.getValue();
         updateFilteringModeSummary(currentValue);
@@ -27,7 +28,6 @@ public class SecuritySettingsActivity extends PreferenceActivity implements
     }
 
     private void updateFilteringModeSummary(String currentValue) {
-        mFilteringModeValues = getResources().getStringArray(R.array.filtering_mode_values);
         for (int i = 0; i < mFilteringModeValues.length; i++) {
             if (currentValue.equals(mFilteringModeValues[i])) {
                 mFilteringMode.setSummary(getResources().getStringArray(R.array.filtering_mode_entries_summary)[i]);

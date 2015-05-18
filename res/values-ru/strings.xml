@@ -6,13 +6,10 @@
     <string name="security_settings">Настройки безопасности</string>
     <string name="filtering_activity">Список политик фильтрации</string>
     <string name="black_list">Черный список</string>
+    <string name="white_list">Белый список</string>
     <string name="ipv6_packets_captured">Пакеты IPv6 не поддерживаются приложением</string>
     <string name="disable_firewall_to_proceeed">Отключите межсетевой экран, чтобы продолжить</string>
 
-    <string-array name="filtering_mode_entries">
-        <item>@string/black_list</item>
-        <item>Белый список</item>
-    </string-array>
     <string-array name="filtering_mode_entries_summary">
         <item>Нет соединений с адресами из черного списка</item>
         <item>Только соединения с адресами из белого списка</item>

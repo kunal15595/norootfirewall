@@ -4,29 +4,35 @@
     <string name="app_name">NoRootFirewall</string>
     <string name="enable_firewall">Enable Firewall</string>
     <string name="security_settings">Security Settings</string>
-    <string name="black_list">Black List</string>
     <string name="filtering_activity">Filtering List</string>
     <string name="ipv6_packets_captured">IPv6 packets cannot be handled by the app</string>
     <string name="disable_firewall_to_proceeed">Please disable the firewall to allow the traffic</string>
 
-    <!-- Preferences -->
-    <string-array name="filtering_mode_entries">
-        <item>@string/black_list</item>
-        <item>White list</item>
+    <!-- FILTERING PREFERENCES -->
+    <string name="filtering_mode">Filtering mode</string>
+    <string name="filtering_mode_key" translatable="false">filtering_mode_key</string>
+    <!-- Human-readable titles -->
+    <string name="black_list_title">Black List</string>
+    <string name="white_list_title">White List</string>
+
+    <string-array name="filtering_mode_titles">
+        <item>@string/black_list_title</item>
+        <item>@string/white_list_title</item>
     </string-array>
+
+    <!-- Summaries -->
     <string-array name="filtering_mode_entries_summary">
         <item>Connections with the blacklisted addresses will not be established</item>
         <item>Connections with the whitelisted addresses only</item>
     </string-array>
 
+    <!-- Values -->
     <string name="filtering_mode_default_value">Black_list</string>
+    <string name="filtering_mode_white_list_value">White_list</string>
 
     <string-array name="filtering_mode_values">
         <item>@string/filtering_mode_default_value</item>
-        <item>White_list</item>
+        <item>@string/filtering_mode_white_list_value</item>
     </string-array>
-
-    <string name="filtering_mode">Filtering mode</string>
-    <string name="filtering_mode_key" translatable="false">filtering_mode_key</string>
 
 </resources>
