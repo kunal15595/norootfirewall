@@ -7,6 +7,8 @@
     <string name="filtering_activity">Filtering List</string>
     <string name="ipv6_packets_captured">IPv6 packets cannot be handled by the app</string>
     <string name="disable_firewall_to_proceeed">Please disable the firewall to allow the traffic</string>
+    <string name="empty_list">The list is empty</string>
+    <string name="port">Port</string>
 
     <!-- FILTERING PREFERENCES -->
     <string name="filtering_mode">Filtering mode</string>
@@ -27,12 +29,43 @@
     </string-array>
 
     <!-- Values -->
-    <string name="filtering_mode_default_value">Black_list</string>
+    <string name="filtering_mode_black_list_value">Black_list</string>
     <string name="filtering_mode_white_list_value">White_list</string>
 
     <string-array name="filtering_mode_values">
-        <item>@string/filtering_mode_default_value</item>
+        <item>@string/filtering_mode_black_list_value</item>
         <item>@string/filtering_mode_white_list_value</item>
     </string-array>
+
+    <!-- CONNECTION PREFERENCES -->
+    <string name="connection_preference">Соединения</string>
+    <string name="connection_preference_key" translatable="false">connection_preference_key</string>
+    <!-- Human-readable titles -->
+    <string name="wifi_only">Только Wi-Fi</string>
+    <string name="wifi_and_mobile">Wi-Fi и мобильное подключение</string>
+
+    <string-array name="connection_preference_titles">
+        <item>@string/wifi_only</item>
+        <item>@string/wifi_and_mobile</item>
+    </string-array>
+
+    <!-- Summaries -->
+    <string-array name="connection_preference_entries_summary">
+        <item>Только Wi-Fi</item>
+        <item>Wi-Fi и мобильное соединение</item>
+    </string-array>
+
+    <!-- Values -->
+    <string name="connection_preference_wifi_value">Wifi</string>
+    <string name="connection_preference_wifi_and_mobile_data_value">Wifi_Mobile</string>
+
+    <string-array name="connection_preference_mode_values">
+        <item>@string/connection_preference_wifi_value</item>
+        <item>@string/connection_preference_wifi_and_mobile_data_value</item>
+    </string-array>
+
+    <!-- Contextual action mode in FilteringActivity -->
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
 
 </resources>

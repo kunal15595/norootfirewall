@@ -12,7 +12,7 @@ public class SecuritySettingsActivity extends PreferenceActivity implements
         OnPreferenceChangeListener {
 
     private ListPreference mFilteringMode;
-    private String[] mFilteringModeValues;
+    private ListPreference mConnectionPreferences;
 
     @SuppressWarnings("deprecation")
     @Override
@@ -20,28 +20,48 @@ public class SecuritySettingsActivity extends PreferenceActivity implements
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.security_settings_screen);
         mFilteringMode = (ListPreference) findPreference(getString(R.string.filtering_mode_key));
-        mFilteringModeValues = getResources().getStringArray(R.array.filtering_mode_values);
+        mConnectionPreferences = (ListPreference) findPreference(getString(R.string.connection_preference_key));
 
-        String currentValue = mFilteringMode.getValue();
-        updateFilteringModeSummary(currentValue);
+        updateFilteringModeSummary(mFilteringMode,
+                getResources().getStringArray(R.array.filtering_mode_values),
+                getResources().getStringArray(R.array.filtering_mode_entries_summary));
+
+        updateFilteringModeSummary(mConnectionPreferences,
+                getResources().getStringArray(R.array.connection_preference_mode_values),
+                getResources().getStringArray(R.array.connection_preference_entries_summary));
+
         mFilteringMode.setOnPreferenceChangeListener(this);
+        mConnectionPreferences.setOnPreferenceChangeListener(this);
     }
 
-    private void updateFilteringModeSummary(String currentValue) {
-        for (int i = 0; i < mFilteringModeValues.length; i++) {
-            if (currentValue.equals(mFilteringModeValues[i])) {
-                mFilteringMode.setSummary(getResources().getStringArray(R.array.filtering_mode_entries_summary)[i]);
+    private void updateFilteringModeSummary(ListPreference listPreference, String current, String[] values, String[] summaries) {
+        for (int i = 0; i < values.length; i++) {
+            if (current.equals(values[i])) {
+                listPreference.setSummary(summaries[i]);
+                break;
             }
         }
+    }
+
+    private void updateFilteringModeSummary(ListPreference listPreference, String[] values, String[] summaries) {
+        updateFilteringModeSummary(listPreference, listPreference.getValue(), values, summaries);
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (preference.equals(mFilteringMode)) {
-            updateFilteringModeSummary((String) newValue);
+            updateFilteringModeSummary((ListPreference) preference,
+                    (String) newValue,
+                    getResources().getStringArray(R.array.filtering_mode_values),
+                    getResources().getStringArray(R.array.filtering_mode_entries_summary));
+            return true;
+        } else if (preference.equals(mConnectionPreferences)) {
+            updateFilteringModeSummary((ListPreference) preference,
+                    (String) newValue,
+                    getResources().getStringArray(R.array.connection_preference_mode_values),
+                    getResources().getStringArray(R.array.connection_preference_entries_summary));
             return true;
         }
         return false;
     }
-
 }

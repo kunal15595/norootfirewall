@@ -2,11 +2,18 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
 
     <ListPreference
-        android:defaultValue="@string/filtering_mode_default_value"
+        android:defaultValue="@string/filtering_mode_black_list_value"
         android:dialogTitle="@string/filtering_mode"
         android:entries="@array/filtering_mode_titles"
         android:entryValues="@array/filtering_mode_values"
         android:key="@string/filtering_mode_key"
         android:title="@string/filtering_mode" />
+    <ListPreference
+        android:defaultValue="@string/connection_preference_wifi_value"
+        android:dialogTitle="@string/connection_preference"
+        android:entries="@array/connection_preference_titles"
+        android:entryValues="@array/connection_preference_mode_values"
+        android:key="@string/connection_preference_key"
+        android:title="@string/connection_preference" />
 
 </PreferenceScreen>

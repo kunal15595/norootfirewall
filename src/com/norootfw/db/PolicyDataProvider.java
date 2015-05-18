@@ -8,15 +8,14 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
-import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.util.Log;
 
-import com.norootfw.R;
+import com.norootfw.utils.PrefUtils;
 
 public class PolicyDataProvider extends ContentProvider {
 
-    private static final String PROVIDER_NAME = "com.norootfw.db.PolicyDataProvider";
+    private static final String AUTHORITY = "com.norootfw.db.PolicyDataProvider";
     private static final String LOG_TAG = PolicyDataProvider.class.getSimpleName();
     private static final UriMatcher sUriMatcher;
 
@@ -24,7 +23,7 @@ public class PolicyDataProvider extends ContentProvider {
 
     static {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
-        sUriMatcher.addURI(PROVIDER_NAME, Tables.IP_PORT_TABLE, UriCodes.IP_PORT_TABLE);
+        sUriMatcher.addURI(AUTHORITY, Tables.IP_PORT_TABLE, UriCodes.IP_PORT_TABLE);
     }
 
     @Override
@@ -53,8 +52,8 @@ public class PolicyDataProvider extends ContentProvider {
         long id = -1;
         switch (sUriMatcher.match(uri)) {
         case UriCodes.IP_PORT_TABLE:
-            String filteringList = PreferenceManager.getDefaultSharedPreferences(getContext()).getString(getContext().getString(R.string.filtering_mode_key), null);
-            values.put(Columns.FILTERING_LIST, filteringList);
+            String filteringList = PrefUtils.getFilteringMode(getContext());
+            values.put(Columns.FILTERING_MODE, filteringList);
             id = mPolicyDatabase.getWritableDatabase().insert(Tables.IP_PORT_TABLE, null, values);
             break;
         default:
@@ -105,11 +104,11 @@ public class PolicyDataProvider extends ContentProvider {
         public void onCreate(SQLiteDatabase db) {
             db.execSQL("CREATE TABLE " + Tables.IP_PORT_TABLE
                     + " (" + Columns._ID + " INTEGER PRIMARY KEY, "
-                    + Columns.FILTERING_LIST + " TEXT NOT NULL, "
+                    + Columns.FILTERING_MODE + " TEXT NOT NULL, "
                     + Columns.IP_ADDRESS + " TEXT, "
                     + Columns.PORT + " INTEGER, "
-                    + Columns.CONNECTION_TYPE + " INTEGER NOT NULL, "
-                    
+                    + Columns.CONNECTION_TYPE + " TEXT NOT NULL, "
+
                     + "UNIQUE(" + Columns.IP_ADDRESS + ", " + Columns.PORT + ", " + Columns.CONNECTION_TYPE + "));");
         }
 
@@ -139,8 +138,12 @@ public class PolicyDataProvider extends ContentProvider {
         }
 
         public static final String IP_ADDRESS = "ip_address";
-        /** Black or white list */
-        static final String FILTERING_LIST = "filtering_list";
+        /** Black or white list
+         * <br />
+         * It is set automatically. DO NOT put it to content values when inserting a new item.
+         * 
+         */
+        public static final String FILTERING_MODE = "filtering_mode";
         public static final String PORT = "port";
         public static final String CONNECTION_TYPE = "connection_type";
     }
@@ -160,6 +163,6 @@ public class PolicyDataProvider extends ContentProvider {
             throw new AssertionError();
         }
 
-        public static final Uri IP_PORT_TABLE = Uri.parse("content://" + PROVIDER_NAME + "/" + Tables.IP_PORT_TABLE);
+        public static final Uri IP_PORT_TABLE = Uri.parse("content://" + AUTHORITY + "/" + Tables.IP_PORT_TABLE);
     }
 }
