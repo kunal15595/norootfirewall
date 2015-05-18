@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
 
+    <ListPreference
+        android:defaultValue="@string/filtering_mode_default_value"
+        android:dialogTitle="@string/filtering_mode"
+        android:entries="@array/filtering_mode_entries"
+        android:entryValues="@array/filtering_mode_values"
+        android:key="@string/filtering_mode_key"
+        android:title="@string/filtering_mode" />
+
 </PreferenceScreen>

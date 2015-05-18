@@ -35,6 +35,7 @@ public class MainActivity extends Activity implements OnClickListener {
         mFirewall = (Button) findViewById(R.id.enable_firewall);
         mFirewall.setOnClickListener(this);
         findViewById(R.id.security_settings).setOnClickListener(this);
+        findViewById(R.id.filtering_activity).setOnClickListener(this);
     }
 
     @Override
@@ -67,6 +68,9 @@ public class MainActivity extends Activity implements OnClickListener {
             break;
         case R.id.security_settings:
             startActivity(new Intent(this, SecuritySettingsActivity.class));
+            break;
+        case R.id.filtering_activity:
+            startActivity(new Intent(this, FilteringListActivity.class));
             break;
         }
     }

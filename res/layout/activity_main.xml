@@ -21,4 +21,10 @@
         android:layout_height="wrap_content"
         android:text="@string/security_settings" />
 
+    <Button
+        android:id="@+id/filtering_activity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/filtering_activity" />
+
 </LinearLayout>

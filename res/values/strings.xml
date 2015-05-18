@@ -5,7 +5,28 @@
     <string name="enable_firewall">Enable Firewall</string>
     <string name="security_settings">Security Settings</string>
     <string name="black_list">Black List</string>
+    <string name="filtering_activity">Filtering List</string>
     <string name="ipv6_packets_captured">IPv6 packets cannot be handled by the app</string>
     <string name="disable_firewall_to_proceeed">Please disable the firewall to allow the traffic</string>
+
+    <!-- Preferences -->
+    <string-array name="filtering_mode_entries">
+        <item>@string/black_list</item>
+        <item>White list</item>
+    </string-array>
+    <string-array name="filtering_mode_entries_summary">
+        <item>Connections with the blacklisted addresses will not be established</item>
+        <item>Connections with the whitelisted addresses only</item>
+    </string-array>
+
+    <string name="filtering_mode_default_value">Black_list</string>
+
+    <string-array name="filtering_mode_values">
+        <item>@string/filtering_mode_default_value</item>
+        <item>White_list</item>
+    </string-array>
+
+    <string name="filtering_mode">Filtering mode</string>
+    <string name="filtering_mode_key" translatable="false">filtering_mode_key</string>
 
 </resources>
