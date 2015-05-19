@@ -22,5 +22,6 @@
     <!-- Contextual action mode in FilteringActivity -->
     <string name="edit">Редактировать</string>
     <string name="delete">Удалить</string>
-
+    <string name="add">Добавить</string>
+    
 </resources>

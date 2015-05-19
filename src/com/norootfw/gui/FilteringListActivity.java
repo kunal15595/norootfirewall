@@ -64,6 +64,7 @@ public class FilteringListActivity extends Activity {
         @Override
         public void onActivityCreated(Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
+            setHasOptionsMenu(true);
             mFilteringMode = PrefUtils.getFilteringMode(getActivity());
             if (mFilteringMode.equals(getString(R.string.filtering_mode_black_list_value))) {
                 getActivity().setTitle(R.string.black_list_title);
@@ -81,6 +82,24 @@ public class FilteringListActivity extends Activity {
             mFilteringListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
             mFilteringListView.setAdapter(mAdapter);
             getLoaderManager().initLoader(LOADER_ID, null, this);
+        }
+        
+        @Override
+        public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+            super.onCreateOptionsMenu(menu, inflater);
+            inflater.inflate(R.menu.filtering_list_menu, menu);
+        }
+        
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item) {
+            switch (item.getItemId()) {
+            case R.id.item_add:
+                // TODO
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+            }
         }
 
         @Override
@@ -126,7 +145,7 @@ public class FilteringListActivity extends Activity {
             public boolean onCreateActionMode(ActionMode mode, Menu menu) {
                 // Inflate a menu resource providing context menu items
                 MenuInflater inflater = mode.getMenuInflater();
-                inflater.inflate(R.menu.filtering_list_menu, menu);
+                inflater.inflate(R.menu.filtering_list_context_menu, menu);
                 return true;
             }
 
