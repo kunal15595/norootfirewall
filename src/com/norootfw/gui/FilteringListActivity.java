@@ -1,7 +1,7 @@
 package com.norootfw.gui;
 
 import android.app.Activity;
-import android.app.ListFragment;
+import android.app.Fragment;
 import android.app.LoaderManager;
 import android.content.Context;
 import android.content.CursorLoader;
@@ -14,6 +14,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.View.OnLongClickListener;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -35,7 +36,7 @@ public class FilteringListActivity extends Activity {
         }
     }
 
-    public static class FilteringListFragment extends ListFragment implements
+    public static class FilteringListFragment extends Fragment implements
             LoaderManager.LoaderCallbacks<Cursor> {
 
         private static final int LOADER_ID = 1;
@@ -47,12 +48,23 @@ public class FilteringListActivity extends Activity {
         };
         private ListAdapter mAdapter;
         private String mFilteringMode;
+        private ListView mFilteringListView;
+        private TextView mFilteringListEmpty;
+        private TextView mFilteringListHeader;
+        
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            View view = inflater.inflate(R.layout.fragment_filtering_list, container, false);
+            mFilteringListView = (ListView) view.findViewById(R.id.filtering_list);
+            mFilteringListEmpty = (TextView) view.findViewById(R.id.empty_filtering_list);
+            mFilteringListHeader = (TextView) view.findViewById(R.id.filtering_list_header);
+            return view;
+        }
 
         @Override
         public void onActivityCreated(Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
             mFilteringMode = PrefUtils.getFilteringMode(getActivity());
-            setEmptyText(getString(R.string.empty_list));
             if (mFilteringMode.equals(getString(R.string.filtering_mode_black_list_value))) {
                 getActivity().setTitle(R.string.black_list_title);
             } else if (mFilteringMode.equals(getString(R.string.filtering_mode_white_list_value))) {
@@ -66,11 +78,8 @@ public class FilteringListActivity extends Activity {
                     COLUMNS,
                     new int[] { R.id.ip_address, R.id.port },
                     0);
-            View header = LayoutInflater.from(getActivity()).inflate(R.layout.filter_list_header, getListView(), false);
-            // TODO: Should always be visible, but it's part of scrolled content
-            getListView().addHeaderView(header);
-            getListView().setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
-            setListAdapter(mAdapter);
+            mFilteringListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+            mFilteringListView.setAdapter(mAdapter);
             getLoaderManager().initLoader(LOADER_ID, null, this);
         }
 
@@ -90,6 +99,15 @@ public class FilteringListActivity extends Activity {
         @Override
         public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
             mAdapter.swapCursor(data);
+            if (data.getCount() == 0) {
+                mFilteringListEmpty.setVisibility(View.VISIBLE);
+                mFilteringListView.setVisibility(View.GONE);
+                mFilteringListHeader.setVisibility(View.GONE);
+            } else {
+                mFilteringListEmpty.setVisibility(View.GONE);
+                mFilteringListView.setVisibility(View.VISIBLE);
+                mFilteringListHeader.setVisibility(View.VISIBLE);
+            }
         }
 
         @Override
