@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingBottom="@dimen/add_dialog_vert_padding"
+    android:paddingLeft="@dimen/add_dialog_hor_padding"
+    android:paddingRight="@dimen/add_dialog_hor_padding"
+    android:paddingTop="@dimen/add_dialog_vert_padding" >
+
+    <EditText
+        android:id="@+id/add_ip_address"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/add_dialog_vert_padding"
+        android:hint="@string/ip_address" />
+
+    <EditText
+        android:id="@+id/add_port"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/add_dialog_vert_padding"
+        android:hint="@string/port" />
+
+    <Spinner
+        android:id="@+id/add_connection_direction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>

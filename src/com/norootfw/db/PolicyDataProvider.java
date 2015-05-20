@@ -107,18 +107,13 @@ public class PolicyDataProvider extends ContentProvider {
                     + Columns.FILTERING_MODE + " TEXT NOT NULL, "
                     + Columns.IP_ADDRESS + " TEXT, "
                     + Columns.PORT + " INTEGER, "
-                    + Columns.CONNECTION_TYPE + " TEXT NOT NULL, "
+                    + Columns.CONNECTION_DIRECTION + " TEXT NOT NULL, "
 
-                    + "UNIQUE(" + Columns.IP_ADDRESS + ", " + Columns.PORT + ", " + Columns.CONNECTION_TYPE + "));");
+                    + "UNIQUE(" + Columns.IP_ADDRESS + ", " + Columns.PORT + ", " + Columns.CONNECTION_DIRECTION + "));");
         }
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {}
-    }
-
-    public enum ConnectionType {
-        INCOMING,
-        OUTGOING
     }
 
     private static class Tables {
@@ -145,7 +140,7 @@ public class PolicyDataProvider extends ContentProvider {
          */
         public static final String FILTERING_MODE = "filtering_mode";
         public static final String PORT = "port";
-        public static final String CONNECTION_TYPE = "connection_type";
+        public static final String CONNECTION_DIRECTION = "connection_direction";
     }
 
     private static class UriCodes {

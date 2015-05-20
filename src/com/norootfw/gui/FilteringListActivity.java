@@ -1,10 +1,13 @@
 package com.norootfw.gui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.LoaderManager;
 import android.content.Context;
 import android.content.CursorLoader;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Loader;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -14,16 +17,18 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.View.OnLongClickListener;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.norootfw.R;
 import com.norootfw.db.PolicyDataProvider;
-import com.norootfw.db.PolicyDataProvider.ConnectionType;
+import com.norootfw.utils.ConnectionDirection;
 import com.norootfw.utils.PrefUtils;
 
 public class FilteringListActivity extends Activity {
@@ -43,7 +48,7 @@ public class FilteringListActivity extends Activity {
         private static final String[] COLUMNS = new String[] {
                 PolicyDataProvider.Columns.IP_ADDRESS,
                 PolicyDataProvider.Columns.PORT,
-                PolicyDataProvider.Columns.CONNECTION_TYPE,
+                PolicyDataProvider.Columns.CONNECTION_DIRECTION,
                 PolicyDataProvider.Columns._ID
         };
         private ListAdapter mAdapter;
@@ -51,7 +56,8 @@ public class FilteringListActivity extends Activity {
         private ListView mFilteringListView;
         private TextView mFilteringListEmpty;
         private TextView mFilteringListHeader;
-        
+        private AlertDialog mAddDialog;
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View view = inflater.inflate(R.layout.fragment_filtering_list, container, false);
@@ -73,6 +79,24 @@ public class FilteringListActivity extends Activity {
             } else {
                 throw new IllegalArgumentException("Invalid filtering mode == " + mFilteringMode);
             }
+
+            View addDialogView = LayoutInflater.from(getActivity()).inflate(R.layout.add_new_dialog, null);
+            Spinner connectionDirectionSpinner = (Spinner) addDialogView.findViewById(R.id.add_connection_direction);
+            connectionDirectionSpinner.setAdapter(new ConnectionDirectionAdapter(getActivity(), android.R.layout.simple_list_item_1, ConnectionDirection.values()));
+            mAddDialog = new AlertDialog.Builder(getActivity())
+                    .setTitle(R.string.add_new_policy)
+                    .setView(addDialogView)
+                    .setPositiveButton(R.string.add, new OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            // TODO Auto-generated method stub
+
+                        }
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .create();
+
             mAdapter = new ListAdapter(getActivity(),
                     R.layout.filter_list_item,
                     null,
@@ -83,18 +107,18 @@ public class FilteringListActivity extends Activity {
             mFilteringListView.setAdapter(mAdapter);
             getLoaderManager().initLoader(LOADER_ID, null, this);
         }
-        
+
         @Override
         public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
             super.onCreateOptionsMenu(menu, inflater);
             inflater.inflate(R.menu.filtering_list_menu, menu);
         }
-        
+
         @Override
         public boolean onOptionsItemSelected(MenuItem item) {
             switch (item.getItemId()) {
             case R.id.item_add:
-                // TODO
+                mAddDialog.show();
                 return true;
 
             default:
@@ -132,6 +156,28 @@ public class FilteringListActivity extends Activity {
         @Override
         public void onLoaderReset(Loader<Cursor> loader) {
             mAdapter.swapCursor(null);
+        }
+    }
+
+    private static class ConnectionDirectionAdapter extends ArrayAdapter<ConnectionDirection> {
+
+        LayoutInflater mInflater;
+        final int mRes;
+
+        public ConnectionDirectionAdapter(Context context, int resource, ConnectionDirection[] objects) {
+            super(context, resource, objects);
+            mInflater = LayoutInflater.from(context);
+            mRes = resource;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            if (convertView == null) {
+                convertView = mInflater.inflate(mRes, parent, false);
+            }
+            TextView text = (TextView) convertView.findViewById(android.R.id.text1);
+            text.setText(ConnectionDirection.values()[position].getTitle());
+            return convertView;
         }
     }
 
@@ -192,7 +238,7 @@ public class FilteringListActivity extends Activity {
             TextView port = (TextView) view.findViewById(R.id.port);
             port.setText(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.PORT)));
 
-            ConnectionType connectionType = ConnectionType.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_TYPE)));
+            ConnectionDirection connectionType = ConnectionDirection.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_DIRECTION)));
             ImageView icon = (ImageView) view.findViewById(R.id.connection_type);
             switch (connectionType) {
             case INCOMING:

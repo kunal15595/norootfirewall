@@ -23,5 +23,15 @@
     <string name="edit">Редактировать</string>
     <string name="delete">Удалить</string>
     <string name="add">Добавить</string>
-    
+
+    <!-- Connection directions -->
+    <string name="incoming">Входящее</string>
+    <string name="outgoing">Исходящее</string>
+
+    <!-- The Add dialog -->
+    <string name="add_new_policy">Добавить новую политику</string>
+    <string name="add_button">Добавить</string>
+    <string name="cancel">Отмена</string>
+    <string name="ip_address">IP-адрес</string>
+
 </resources>
