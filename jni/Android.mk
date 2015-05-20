@@ -5,6 +5,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := lwip
 
 LOCAL_C_INCLUDES := \
+    $(LOCAL_PATH)/include \
 	$(LOCAL_PATH)/lwip-1.4.1/src/include \
 	$(LOCAL_PATH)/lwip-1.4.1/src/include/ipv4
 
@@ -63,7 +64,8 @@ LOCAL_SRC_FILES := \
 	./lwip-1.4.1/src/netif/ppp/randm.c \
 	./lwip-1.4.1/src/netif/ppp/vj.c \
 	./lwip-1.4.1/src/netif/slipif.c \
-	./lwip-1.4.1/src/sys_arch.c
+	./lwip-1.4.1/src/sys_arch.c \
+	./com_norootfw_NoRootFwService.c
 
 LOCAL_LDLIBS := -llog
 

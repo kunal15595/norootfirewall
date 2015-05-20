@@ -56,6 +56,8 @@
 #include "lwip/sys.h"
 #include "lwip/opt.h"
 #include "lwip/stats.h"
+#include <android/log.h>
+#include <semaphore.h>
 
 #define UMAX(a, b)      ((a) > (b) ? (a) : (b))
 
@@ -86,11 +88,23 @@ struct sys_sem {
   pthread_cond_t cond;
   pthread_mutex_t mutex;
 };
+// TODO: typedef sem_t sys_sem; Their implementation doesn't mention Android's semaphore
+// Maksim Dmitriev
+// January 6, 2015
 
 struct sys_thread {
   struct sys_thread *next;
   pthread_t pthread;
 };
+
+/*
+	TODO: sys_arch_timeouts
+	http://lwip.wikia.com/wiki/Porting_for_an_OS
+	I may need them although the UNIX port doesn't contain them.
+	
+	Maksim Dmitriev
+	May 10, 2015
+*/
 
 #if SYS_LIGHTWEIGHT_PROT
 static pthread_mutex_t lwprot_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -493,6 +507,16 @@ sys_init(void)
 {
   gettimeofday(&starttime, NULL);
 }
+/*
+	As far as I understand now, sys_arch_protect and sys_arch_unprotect are not used by
+	lwIP. However, they can be used by client code if it needs to disable interrupts around critical 
+	blocks of code that should not be interrupted.
+
+	http://lwip.wikia.com/wiki/Porting_for_an_OS
+	Maksim Dmitriev
+	May 10, 2015
+	
+*/
 /*-----------------------------------------------------------------------------------*/
 #if SYS_LIGHTWEIGHT_PROT
 /** sys_prot_t sys_arch_protect(void)

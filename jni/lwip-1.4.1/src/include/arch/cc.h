@@ -5,6 +5,7 @@
 #include <sys/endian.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "log.h"
 
 typedef uint8_t u8_t;
 typedef uint16_t u16_t;
@@ -41,7 +42,7 @@ typedef intptr_t mem_ptr_t;
 /* Platform-specific diagnostic output */
 #define LWIP_PLATFORM_DIAG(x)	do {printf x;} while(0)
 
-#define LWIP_PLATFORM_ASSERT(x) do {printf("Assertion \"%s\" failed at line %d in %s\n", \
-                                     x, __LINE__, __FILE__); fflush(NULL); abort();} while(0)
+#define LWIP_PLATFORM_ASSERT(x) do {LOGE("Assertion \"%s\" failed", x); \
+	                                fflush(NULL); abort();} while(0)
 
 #endif

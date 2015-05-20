@@ -29,8 +29,8 @@
  * Author: Adam Dunkels <adam@sics.se>
  *
  */
-#ifndef __ARCH_PERF_H__
-#define __ARCH_PERF_H__
+#ifndef LWIP_1_4_1_SRC_INCLUDE_ARCH_PERF_H_
+#define LWIP_1_4_1_SRC_INCLUDE_ARCH_PERF_H_
 
 #include <sys/times.h>
 

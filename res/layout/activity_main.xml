@@ -7,12 +7,24 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.norootfw.MainActivity" >
+    tools:context="com.norootfw.gui.MainActivity" >
 
     <Button
         android:id="@+id/enable_firewall"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/enable_firewall" />
+
+    <Button
+        android:id="@+id/security_settings"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/security_settings" />
+
+    <Button
+        android:id="@+id/filtering_activity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/filtering_activity" />
 
 </LinearLayout>

@@ -102,6 +102,27 @@ netif_loopif_init(struct netif *netif)
 }
 #endif /* LWIP_HAVE_LOOPIF */
 
+/*
+ * This function was added because netif_add would throw an error in the case of a NULL init
+ * function pointer
+ *
+ * Maksim Dmitriev
+ * January 14, 2015
+ */
+static err_t
+netif_tun0if_init(struct netif *netif)
+{
+  netif->name[0] = 't';
+  netif->name[1] = 'u';
+  return ERR_OK;
+}
+
+void
+netif_init_tun0(void)
+{
+
+}
+
 void
 netif_init(void)
 {
