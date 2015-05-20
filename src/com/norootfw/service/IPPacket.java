@@ -68,13 +68,14 @@ enum IPPacket {
     static final byte TRANSPORT_PROTOCOL_UDP = 17;
     
     // IPv4 pseudo header
-    private static final int IPV4_PSEUDO_HEADER_LENGTH = 12;
+    private static final int IPV4_PSEUDO_PRE_UDP_PART_LENGTH = 12;
     private static final int IP_PSEUDO_SRC_IP = 0;
     private static final int IP_PSEUDO_DST_IP = 4;
     private static final int IP_PSEUDO_ZEROS = 8;
     private static final int IP_PSEUDO_PROTOCOL = 9;
     // The entity takes two bytes
     private static final int IP_PSEUDO_UDP_LENGTH_FIELD_1 = 10;
+    private static final int IP_PSEUDO_UDP_HEADER_START = 12;
 
     private byte[] mPacket;
     private byte[] mPayload;
@@ -133,8 +134,12 @@ enum IPPacket {
      * @param payload
      */
     void setPayload(int headerLengths, byte[] payload) {
-        System.arraycopy(payload, 0, mPacket, headerLengths, payload.length);
-        mPayload = Arrays.copyOfRange(mPacket, getIpHeaderLength() + getTransportLayerHeaderLength(), mPacket.length);
+        mPayload = Arrays.copyOfRange(payload, 0, payload.length);
+        System.arraycopy(mPayload, 0, mPacket, headerLengths, mPayload.length);
+        if (NoRootFwService.isTestSrcAddress()) {
+            Log.d(NoRootFwService.TAG, "payload == " + Arrays.toString(payload));
+            Log.d(NoRootFwService.TAG, "mPayload == " + Arrays.toString(mPayload));
+        }
     }
     
     void setUdpHeaderAndDataLength(int length) {
@@ -314,7 +319,11 @@ enum IPPacket {
     }
     
     void updateUdpCheckSum() {
-        byte[] ipv4PseudoHeader = new byte[IPV4_PSEUDO_HEADER_LENGTH];
+        if (NoRootFwService.isTestSrcAddress()) {
+            Log.d(NoRootFwService.TAG, "mPayload.length == " + mPayload.length);
+            Log.d(NoRootFwService.TAG, "ipv4PseudoHeader.length == " + (IPV4_PSEUDO_PRE_UDP_PART_LENGTH + UDP_HEADER_LENGTH + mPayload.length));
+        }
+        byte[] ipv4PseudoHeader = new byte[IPV4_PSEUDO_PRE_UDP_PART_LENGTH + UDP_HEADER_LENGTH + mPayload.length];
 
         // Fill mIpv4PseudoHeader
         System.arraycopy(mPacket, IP_SRC_IP_ADDRESS_INDEX, ipv4PseudoHeader, IP_PSEUDO_SRC_IP, IP_ADDRESS_LENGTH);
@@ -326,6 +335,11 @@ enum IPPacket {
                 mPacket[getIpHeaderLength() + TRANSPORT_LAYER_HEADER_DATA_LENGTH_INDEX + 1]
         };
         System.arraycopy(udpLength, 0, ipv4PseudoHeader, IP_PSEUDO_UDP_LENGTH_FIELD_1, udpLength.length);
+        // Copy the UDP header itself without the last two bytes which contain the checksum
+        System.arraycopy(mPacket, getIpHeaderLength(), ipv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START, UDP_HEADER_LENGTH - 2);
+        
+        // Data
+        System.arraycopy(mPayload, 0, ipv4PseudoHeader, IP_PSEUDO_UDP_HEADER_START + UDP_HEADER_LENGTH, mPayload.length);
         if (NoRootFwService.isTestSrcAddress()) {
             Log.d(NoRootFwService.TAG, "ipv4PseudoHeader == " + Arrays.toString(ipv4PseudoHeader));   
         }
