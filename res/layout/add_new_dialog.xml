@@ -20,7 +20,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/add_dialog_vert_padding"
-        android:hint="@string/port" />
+        android:hint="@string/port"
+        android:inputType="number" />
 
     <Spinner
         android:id="@+id/add_connection_direction"

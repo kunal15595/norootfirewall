@@ -4,12 +4,14 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.LoaderManager;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.CursorLoader;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Loader;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
@@ -17,9 +19,11 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnFocusChangeListener;
 import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
@@ -28,8 +32,11 @@ import android.widget.TextView;
 
 import com.norootfw.R;
 import com.norootfw.db.PolicyDataProvider;
+import com.norootfw.db.PolicyDataProvider.Columns;
+import com.norootfw.db.PolicyDataProvider.Uris;
 import com.norootfw.utils.ConnectionDirection;
 import com.norootfw.utils.PrefUtils;
+import com.norootfw.utils.Utils;
 
 public class FilteringListActivity extends Activity {
 
@@ -51,6 +58,7 @@ public class FilteringListActivity extends Activity {
                 PolicyDataProvider.Columns.CONNECTION_DIRECTION,
                 PolicyDataProvider.Columns._ID
         };
+        private static final int MAX_PORT = 65535;
         private ListAdapter mAdapter;
         private String mFilteringMode;
         private ListView mFilteringListView;
@@ -81,7 +89,38 @@ public class FilteringListActivity extends Activity {
             }
 
             View addDialogView = LayoutInflater.from(getActivity()).inflate(R.layout.add_new_dialog, null);
-            Spinner connectionDirectionSpinner = (Spinner) addDialogView.findViewById(R.id.add_connection_direction);
+            final EditText addIpAddressEditText = (EditText) addDialogView.findViewById(R.id.add_ip_address);
+            addIpAddressEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
+
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    if (!hasFocus) {
+                        EditText et = (EditText) v;
+                        String ipAddress = et.getText().toString();
+                        if (!ipAddress.matches(Utils.IP_ADDRESS_PATTERN)) {
+                            et.setError(getString(R.string.invalid_ip_address));
+                        }
+                    }
+                }
+            });
+            final EditText addPortEditText = (EditText) addDialogView.findViewById(R.id.add_port);
+            addPortEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
+
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    if (!hasFocus) {
+                        EditText et = (EditText) v;
+                        try {
+                            int port = Integer.parseInt(et.getText().toString());
+                            if (port <= MAX_PORT) {
+                                return;
+                            }
+                        } catch (NumberFormatException e) {}
+                        et.setError(getString(R.string.invalid_port_number));
+                    }
+                }
+            });
+            final Spinner connectionDirectionSpinner = (Spinner) addDialogView.findViewById(R.id.add_connection_direction);
             connectionDirectionSpinner.setAdapter(new ConnectionDirectionAdapter(getActivity(), android.R.layout.simple_list_item_1, ConnectionDirection.values()));
             mAddDialog = new AlertDialog.Builder(getActivity())
                     .setTitle(R.string.add_new_policy)
@@ -90,8 +129,9 @@ public class FilteringListActivity extends Activity {
 
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            // TODO Auto-generated method stub
-
+                            insertPolicy(addIpAddressEditText.getText().toString(),
+                                    Integer.parseInt(addPortEditText.getText().toString()),
+                                    (ConnectionDirection) connectionDirectionSpinner.getSelectedItem());
                         }
                     })
                     .setNegativeButton(R.string.cancel, null)
@@ -156,6 +196,17 @@ public class FilteringListActivity extends Activity {
         @Override
         public void onLoaderReset(Loader<Cursor> loader) {
             mAdapter.swapCursor(null);
+        }
+
+        private void insertPolicy(String ipAddress, int port, ConnectionDirection direction) {
+            ContentValues values = new ContentValues();
+            values.put(Columns.IP_ADDRESS, ipAddress);
+            values.put(Columns.PORT, port);
+            values.put(Columns.CONNECTION_DIRECTION, direction.name());
+            Uri itemUri = getActivity().getContentResolver().insert(Uris.IP_PORT_TABLE, values);
+            if (itemUri == null) {
+                throw new RuntimeException("Failed to insert a new policy");
+            }
         }
     }
 

@@ -36,7 +36,9 @@ public class PolicyDataProvider extends ContentProvider {
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         switch (sUriMatcher.match(uri)) {
         case UriCodes.IP_PORT_TABLE:
-            return mPolicyDatabase.getReadableDatabase().query(Tables.IP_PORT_TABLE, projection, selection, selectionArgs, null, null, sortOrder);
+            Cursor cursor = mPolicyDatabase.getReadableDatabase().query(Tables.IP_PORT_TABLE, projection, selection, selectionArgs, null, null, sortOrder);
+            cursor.setNotificationUri(getContext().getContentResolver(), uri);
+            return cursor;
         default:
             throw new RuntimeException("Unsupported URI: " + uri);
         }
@@ -63,7 +65,9 @@ public class PolicyDataProvider extends ContentProvider {
             Log.w(LOG_TAG, "Failed to insert a new item");
             return null;
         } else {
-            return Uri.withAppendedPath(Uris.IP_PORT_TABLE, Long.toString(id));
+            Uri itemUri = Uri.withAppendedPath(Uris.IP_PORT_TABLE, Long.toString(id));
+            getContext().getContentResolver().notifyChange(itemUri, null);
+            return itemUri;
         }
     }
 
@@ -74,6 +78,8 @@ public class PolicyDataProvider extends ContentProvider {
             int deleted = mPolicyDatabase.getWritableDatabase().delete(Tables.IP_PORT_TABLE, selection, selectionArgs);
             if (deleted == 0) {
                 Log.w(LOG_TAG, "No items deleted");
+            } else {
+                getContext().getContentResolver().notifyChange(uri, null);
             }
             return deleted;
         default:

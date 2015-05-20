@@ -78,5 +78,7 @@
     <string name="add_button">Add</string>
     <string name="cancel">Cancel</string>
     <string name="ip_address">IP address</string>
+    <string name="invalid_ip_address">Invalid IP address</string>
+    <string name="invalid_port_number">Invalid port number</string>
 
 </resources>
