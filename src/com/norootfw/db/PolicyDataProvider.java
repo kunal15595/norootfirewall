@@ -56,7 +56,7 @@ public class PolicyDataProvider extends ContentProvider {
         case UriCodes.IP_PORT_TABLE:
             String filteringList = PrefUtils.getFilteringMode(getContext());
             values.put(Columns.FILTERING_MODE, filteringList);
-            id = mPolicyDatabase.getWritableDatabase().insert(Tables.IP_PORT_TABLE, null, values);
+            id = mPolicyDatabase.getWritableDatabase().insertWithOnConflict(Tables.IP_PORT_TABLE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
             break;
         default:
             throw new RuntimeException("Unsupported URI: " + uri);

@@ -13,6 +13,8 @@ import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -65,6 +67,8 @@ public class FilteringListActivity extends Activity {
         private TextView mFilteringListEmpty;
         private TextView mFilteringListHeader;
         private AlertDialog mAddDialog;
+        private EditText mAddPortEditText;
+        private EditText mAddIpAddressEditText;
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -89,34 +93,55 @@ public class FilteringListActivity extends Activity {
             }
 
             View addDialogView = LayoutInflater.from(getActivity()).inflate(R.layout.add_new_dialog, null);
-            final EditText addIpAddressEditText = (EditText) addDialogView.findViewById(R.id.add_ip_address);
-            addIpAddressEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
+            mAddIpAddressEditText = (EditText) addDialogView.findViewById(R.id.add_ip_address);
+            mAddIpAddressEditText.addTextChangedListener(new TextWatcher() {
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    mAddDialog.getButton(DialogInterface.BUTTON_POSITIVE).setEnabled(isIpAddressValid(s.toString()) && isPortValid(mAddPortEditText.getText().toString()));
+                }
+            });
+            mAddIpAddressEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
 
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
                     if (!hasFocus) {
                         EditText et = (EditText) v;
-                        String ipAddress = et.getText().toString();
-                        if (!ipAddress.matches(Utils.IP_ADDRESS_PATTERN)) {
+                        if (!isIpAddressValid(et.getText().toString())) {
                             et.setError(getString(R.string.invalid_ip_address));
                         }
                     }
                 }
             });
-            final EditText addPortEditText = (EditText) addDialogView.findViewById(R.id.add_port);
-            addPortEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
+            mAddPortEditText = (EditText) addDialogView.findViewById(R.id.add_port);
+            mAddPortEditText.addTextChangedListener(new TextWatcher() {
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    mAddDialog.getButton(DialogInterface.BUTTON_POSITIVE).setEnabled(isIpAddressValid(s.toString()) && isPortValid(mAddIpAddressEditText.getText().toString()));
+                }
+            });
+            mAddPortEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
 
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
                     if (!hasFocus) {
                         EditText et = (EditText) v;
-                        try {
-                            int port = Integer.parseInt(et.getText().toString());
-                            if (port <= MAX_PORT) {
-                                return;
-                            }
-                        } catch (NumberFormatException e) {}
-                        et.setError(getString(R.string.invalid_port_number));
+                        if (!isPortValid(et.getText().toString())) {
+                            et.setError(getString(R.string.invalid_port_number));
+                        }
                     }
                 }
             });
@@ -129,8 +154,8 @@ public class FilteringListActivity extends Activity {
 
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            insertPolicy(addIpAddressEditText.getText().toString(),
-                                    Integer.parseInt(addPortEditText.getText().toString()),
+                            insertPolicy(mAddIpAddressEditText.getText().toString(),
+                                    Integer.parseInt(mAddPortEditText.getText().toString()),
                                     (ConnectionDirection) connectionDirectionSpinner.getSelectedItem());
                         }
                     })
@@ -159,6 +184,7 @@ public class FilteringListActivity extends Activity {
             switch (item.getItemId()) {
             case R.id.item_add:
                 mAddDialog.show();
+                mAddDialog.getButton(DialogInterface.BUTTON_POSITIVE).setEnabled(false);
                 return true;
 
             default:
@@ -196,6 +222,18 @@ public class FilteringListActivity extends Activity {
         @Override
         public void onLoaderReset(Loader<Cursor> loader) {
             mAdapter.swapCursor(null);
+        }
+
+        private boolean isIpAddressValid(String ipAddress) {
+            return ipAddress.matches(Utils.IP_ADDRESS_PATTERN);
+        }
+
+        private boolean isPortValid(String port) {
+            boolean valid = false;
+            try {
+                valid = Integer.parseInt(port) <= MAX_PORT;
+            } catch (NumberFormatException e) {}
+            return valid;
         }
 
         private void insertPolicy(String ipAddress, int port, ConnectionDirection direction) {
