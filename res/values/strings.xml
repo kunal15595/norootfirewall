@@ -74,6 +74,10 @@
     <string name="incoming">Incoming</string>
     <string name="outgoing">Outgoing</string>
 
+    <!-- Connection policy values -->
+    <string name="allowed">Allowed</string>
+    <string name="forbidden">Forbidden</string>
+
     <!-- The Add dialog -->
     <string name="add_new_policy">Add a new policy</string>
     <string name="add_button">Add</string>
@@ -81,7 +85,7 @@
     <string name="ip_address">IP address</string>
     <string name="invalid_ip_address">Invalid IP address</string>
     <string name="invalid_port_number">Invalid port number</string>
-    
+
     <!-- CAB -->
     <string name="selected">Выбрано: %d</string>
 

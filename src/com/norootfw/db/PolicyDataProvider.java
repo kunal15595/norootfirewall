@@ -54,8 +54,6 @@ public class PolicyDataProvider extends ContentProvider {
         long id = -1;
         switch (sUriMatcher.match(uri)) {
         case UriCodes.IP_PORT_TABLE:
-            String filteringList = PrefUtils.getFilteringMode(getContext());
-            values.put(Columns.FILTERING_MODE, filteringList);
             id = mPolicyDatabase.getWritableDatabase().insertWithOnConflict(Tables.IP_PORT_TABLE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
             break;
         default:
@@ -110,7 +108,7 @@ public class PolicyDataProvider extends ContentProvider {
         public void onCreate(SQLiteDatabase db) {
             db.execSQL("CREATE TABLE " + Tables.IP_PORT_TABLE
                     + " (" + Columns._ID + " INTEGER PRIMARY KEY, "
-                    + Columns.FILTERING_MODE + " TEXT NOT NULL, "
+                    + Columns.CONNECTION_POLICY + " TEXT NOT NULL, "
                     + Columns.IP_ADDRESS + " TEXT, "
                     + Columns.PORT + " INTEGER, "
                     + Columns.CONNECTION_DIRECTION + " TEXT NOT NULL, "
@@ -139,12 +137,9 @@ public class PolicyDataProvider extends ContentProvider {
         }
 
         public static final String IP_ADDRESS = "ip_address";
-        /** Black or white list
-         * <br />
-         * It is set automatically. DO NOT put it to content values when inserting a new item.
-         * 
+        /** Allowed or prohibited
          */
-        public static final String FILTERING_MODE = "filtering_mode";
+        public static final String CONNECTION_POLICY = "connection_policy";
         public static final String PORT = "port";
         public static final String CONNECTION_DIRECTION = "connection_direction";
     }

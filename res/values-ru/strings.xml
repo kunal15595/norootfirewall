@@ -28,6 +28,10 @@
     <!-- Connection directions -->
     <string name="incoming">Входящее</string>
     <string name="outgoing">Исходящее</string>
+    
+    <!-- Connection policy values -->
+    <string name="allowed">Разрешено</string>
+    <string name="forbidden">Запрещено</string>
 
     <!-- The Add dialog -->
     <string name="add_new_policy">Добавить новую политику</string>

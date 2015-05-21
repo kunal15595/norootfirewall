@@ -38,7 +38,7 @@ import com.norootfw.db.PolicyDataProvider;
 import com.norootfw.db.PolicyDataProvider.Columns;
 import com.norootfw.db.PolicyDataProvider.Uris;
 import com.norootfw.utils.ConnectionDirection;
-import com.norootfw.utils.PrefUtils;
+import com.norootfw.utils.ConnectionPolicy;
 import com.norootfw.utils.Utils;
 
 public class FilteringListActivity extends Activity {
@@ -59,11 +59,11 @@ public class FilteringListActivity extends Activity {
                 PolicyDataProvider.Columns.IP_ADDRESS,
                 PolicyDataProvider.Columns.PORT,
                 PolicyDataProvider.Columns.CONNECTION_DIRECTION,
+                PolicyDataProvider.Columns.CONNECTION_POLICY,
                 PolicyDataProvider.Columns._ID
         };
         private static final int MAX_PORT = 65535;
         private ListAdapter mAdapter;
-        private String mFilteringMode;
         private ListView mFilteringListView;
         private TextView mFilteringListEmpty;
         private TextView mFilteringListHeader;
@@ -84,14 +84,6 @@ public class FilteringListActivity extends Activity {
         public void onActivityCreated(Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
             setHasOptionsMenu(true);
-            mFilteringMode = PrefUtils.getFilteringMode(getActivity());
-            if (mFilteringMode.equals(getString(R.string.filtering_mode_black_list_value))) {
-                getActivity().setTitle(R.string.black_list_title);
-            } else if (mFilteringMode.equals(getString(R.string.filtering_mode_white_list_value))) {
-                getActivity().setTitle(R.string.white_list_title);
-            } else {
-                throw new IllegalArgumentException("Invalid filtering mode == " + mFilteringMode);
-            }
 
             View addDialogView = LayoutInflater.from(getActivity()).inflate(R.layout.add_new_dialog, null);
             mAddIpAddressEditText = (EditText) addDialogView.findViewById(R.id.add_ip_address);
@@ -148,6 +140,8 @@ public class FilteringListActivity extends Activity {
             });
             final Spinner connectionDirectionSpinner = (Spinner) addDialogView.findViewById(R.id.add_connection_direction);
             connectionDirectionSpinner.setAdapter(new ConnectionDirectionAdapter(getActivity(), android.R.layout.simple_list_item_1, ConnectionDirection.values()));
+            final Spinner connectionPolicySpinner = (Spinner) addDialogView.findViewById(R.id.add_connection_policy);
+            connectionPolicySpinner.setAdapter(new ConnectionPolicyAdapter(getActivity(), android.R.layout.simple_list_item_1, ConnectionPolicy.values()));
             mAddDialog = new AlertDialog.Builder(getActivity())
                     .setTitle(R.string.add_new_policy)
                     .setView(addDialogView)
@@ -157,7 +151,8 @@ public class FilteringListActivity extends Activity {
                         public void onClick(DialogInterface dialog, int which) {
                             insertPolicy(mAddIpAddressEditText.getText().toString(),
                                     Integer.parseInt(mAddPortEditText.getText().toString()),
-                                    (ConnectionDirection) connectionDirectionSpinner.getSelectedItem());
+                                    (ConnectionDirection) connectionDirectionSpinner.getSelectedItem(),
+                                    (ConnectionPolicy) connectionPolicySpinner.getSelectedItem());
                         }
                     })
                     .setNegativeButton(R.string.cancel, null)
@@ -220,8 +215,8 @@ public class FilteringListActivity extends Activity {
             case LOADER_ID:
                 return new CursorLoader(getActivity(),
                         PolicyDataProvider.Uris.IP_PORT_TABLE, COLUMNS,
-                        PolicyDataProvider.Columns.FILTERING_MODE + "=?",
-                        new String[] { mFilteringMode },
+                        null,
+                        null,
                         null);
             }
             return null;
@@ -258,11 +253,12 @@ public class FilteringListActivity extends Activity {
             return valid;
         }
 
-        private void insertPolicy(String ipAddress, int port, ConnectionDirection direction) {
+        private void insertPolicy(String ipAddress, int port, ConnectionDirection direction, ConnectionPolicy policy) {
             ContentValues values = new ContentValues();
             values.put(Columns.IP_ADDRESS, ipAddress);
             values.put(Columns.PORT, port);
             values.put(Columns.CONNECTION_DIRECTION, direction.name());
+            values.put(Columns.CONNECTION_POLICY, policy.name());
             Uri itemUri = getActivity().getContentResolver().insert(Uris.IP_PORT_TABLE, values);
             if (itemUri == null) {
                 throw new RuntimeException("Failed to insert a new policy");
@@ -291,6 +287,30 @@ public class FilteringListActivity extends Activity {
             return convertView;
         }
     }
+    
+    // TODO: can I say, "Any enum"? If so, there is no need to have the two adapters: 
+    // ConnectionPolicyAdapter and ConnectionDirectionAdapter
+    private static class ConnectionPolicyAdapter extends ArrayAdapter<ConnectionPolicy> {
+
+        LayoutInflater mInflater;
+        final int mRes;
+
+        public ConnectionPolicyAdapter(Context context, int resource, ConnectionPolicy[] objects) {
+            super(context, resource, objects);
+            mInflater = LayoutInflater.from(context);
+            mRes = resource;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            if (convertView == null) {
+                convertView = mInflater.inflate(mRes, parent, false);
+            }
+            TextView text = (TextView) convertView.findViewById(android.R.id.text1);
+            text.setText(ConnectionPolicy.values()[position].getTitle());
+            return convertView;
+        }
+    }
 
     private static class ListAdapter extends SimpleCursorAdapter {
 
@@ -316,17 +336,30 @@ public class FilteringListActivity extends Activity {
             TextView port = (TextView) view.findViewById(R.id.port);
             port.setText(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.PORT)));
 
-            ConnectionDirection connectionType = ConnectionDirection.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_DIRECTION)));
-            ImageView icon = (ImageView) view.findViewById(R.id.connection_type);
-            switch (connectionType) {
+            ConnectionDirection direction = ConnectionDirection.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_DIRECTION)));
+            ImageView directionIcon = (ImageView) view.findViewById(R.id.connection_direction);
+            switch (direction) {
             case INCOMING:
-                icon.setImageResource(R.drawable.ico_download);
+                directionIcon.setImageResource(R.drawable.ico_download);
                 break;
             case OUTGOING:
-                icon.setImageResource(R.drawable.ico_upload);
+                directionIcon.setImageResource(R.drawable.ico_upload);
                 break;
             default:
-                throw new IllegalArgumentException("Illegal connection type: " + connectionType);
+                throw new IllegalArgumentException("Illegal connection type: " + direction);
+            }
+            
+            ConnectionPolicy policy = ConnectionPolicy.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_POLICY)));
+            ImageView policyIcon = (ImageView) view.findViewById(R.id.connection_policy);
+            switch (policy) {
+            case ALLOWED:
+                policyIcon.setImageResource(R.drawable.connection_allowed);
+                break;
+            case FORBIDDEN:
+                policyIcon.setImageResource(R.drawable.connection_forbidden);
+                break;
+            default:
+                throw new IllegalArgumentException("Illegal connection type: " + direction);
             }
         }
     }

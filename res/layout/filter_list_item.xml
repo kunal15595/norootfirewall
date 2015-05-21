@@ -8,10 +8,17 @@
     android:paddingTop="12dp" >
 
     <ImageView
-        android:id="@+id/connection_type"
+        android:id="@+id/connection_direction"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true" />
+
+    <ImageView
+        android:id="@+id/connection_policy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_toRightOf="@id/connection_direction" />
 
     <TextView
         android:id="@+id/ip_address"
@@ -19,7 +26,8 @@
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
         android:layout_marginRight="4dp"
-        android:layout_toRightOf="@id/connection_type"
+        android:layout_toRightOf="@id/connection_policy"
+        android:paddingLeft="2dp"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <TextView
