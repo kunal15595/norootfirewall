@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -36,6 +37,7 @@ import com.norootfw.R;
 import com.norootfw.db.PolicyDataProvider;
 import com.norootfw.db.PolicyDataProvider.Columns;
 import com.norootfw.db.PolicyDataProvider.Uris;
+import com.norootfw.service.NoRootFwService;
 import com.norootfw.utils.ConnectionDirection;
 import com.norootfw.utils.PrefUtils;
 import com.norootfw.utils.Utils;
@@ -168,7 +170,6 @@ public class FilteringListActivity extends Activity {
                     COLUMNS,
                     new int[] { R.id.ip_address, R.id.port },
                     0);
-            mFilteringListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
             mFilteringListView.setAdapter(mAdapter);
             getLoaderManager().initLoader(LOADER_ID, null, this);
         }
@@ -269,7 +270,11 @@ public class FilteringListActivity extends Activity {
             return convertView;
         }
     }
-
+    
+    private static class ViewInfo {
+        boolean selected;
+    }
+    
     private static class ListAdapter extends SimpleCursorAdapter {
 
         OnLongClickListener mOnLongClickListener = null;
@@ -303,6 +308,7 @@ public class FilteringListActivity extends Activity {
             public void onDestroyActionMode(ActionMode mode) {}
         };
         Activity mActivity;
+        int mSelectedCount;
 
         public ListAdapter(Context context, int layout, Cursor c, String[] from, int[] to, int flags) {
             super(context, layout, c, from, to, flags);
@@ -311,16 +317,30 @@ public class FilteringListActivity extends Activity {
 
                 @Override
                 public boolean onLongClick(View v) {
-                    mActivity.startActionMode(mActionModeCallback);
-                    v.setSelected(true);
+                    ViewInfo viewInfo = (ViewInfo) v.getTag();
+                    if (viewInfo.selected) {
+                        mSelectedCount--;
+                    } else {
+                        mSelectedCount++;
+                    }
+                    v.setSelected(viewInfo.selected = !viewInfo.selected);
+                    if (mSelectedCount > 0) {
+                        mActivity.startActionMode(mActionModeCallback);
+                    }
                     return true;
                 }
             };
         }
-
         @Override
         public void bindView(View view, Context context, Cursor cursor) {
             view.setOnLongClickListener(mOnLongClickListener);
+            Object tag = view.getTag();
+            if (tag != null) {
+                ViewInfo info = (ViewInfo) view.getTag();
+                view.setSelected(info.selected);
+            } else {
+                view.setTag(new ViewInfo());
+            }
             TextView ipAddress = (TextView) view.findViewById(R.id.ip_address);
             ipAddress.setText(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.IP_ADDRESS)));
 

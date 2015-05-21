@@ -23,6 +23,7 @@
     <string name="edit">Редактировать</string>
     <string name="delete">Удалить</string>
     <string name="add">Добавить</string>
+    <string name="select_all">Выбрать все</string>
 
     <!-- Connection directions -->
     <string name="incoming">Входящее</string>

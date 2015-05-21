@@ -68,7 +68,8 @@
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
     <string name="add">Add</string>
-
+    <string name="select_all">Select All</string>
+    
     <!-- Connection directions -->
     <string name="incoming">Incoming</string>
     <string name="outgoing">Outgoing</string>
