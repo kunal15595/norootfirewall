@@ -13,18 +13,18 @@ import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.util.LongSparseArray;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
-import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnFocusChangeListener;
-import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -37,7 +37,6 @@ import com.norootfw.R;
 import com.norootfw.db.PolicyDataProvider;
 import com.norootfw.db.PolicyDataProvider.Columns;
 import com.norootfw.db.PolicyDataProvider.Uris;
-import com.norootfw.service.NoRootFwService;
 import com.norootfw.utils.ConnectionDirection;
 import com.norootfw.utils.PrefUtils;
 import com.norootfw.utils.Utils;
@@ -171,6 +170,28 @@ public class FilteringListActivity extends Activity {
                     new int[] { R.id.ip_address, R.id.port },
                     0);
             mFilteringListView.setAdapter(mAdapter);
+            mFilteringListView.setOnItemLongClickListener(new OnItemLongClickListener() {
+
+                @Override
+                public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                    if (mAdapter.mSelectedIds.get(id) == null || !mAdapter.mSelectedIds.get(id)) {
+                        mAdapter.mSelectedIds.put(id, true);
+                        view.setBackgroundColor(getActivity().getResources().getColor(R.color.highlighted_item));
+                    } else {
+                        /*
+                         * I don't put a false because there is no reason to store unselected items.
+                         * If the user selects and unselects items much, the hash table will grow
+                         * rapidly
+                         * 
+                         * Maksim Dmitriev
+                         * May 21, 2015
+                         */
+                        mAdapter.mSelectedIds.remove(id);
+                        view.setBackgroundColor(getActivity().getResources().getColor(android.R.color.white));
+                    }
+                    return true;
+                }
+            });
             getLoaderManager().initLoader(LOADER_ID, null, this);
         }
 
@@ -270,76 +291,24 @@ public class FilteringListActivity extends Activity {
             return convertView;
         }
     }
-    
-    private static class ViewInfo {
-        boolean selected;
-    }
-    
+
     private static class ListAdapter extends SimpleCursorAdapter {
 
-        OnLongClickListener mOnLongClickListener = null;
-        private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
-
-            // Called when the action mode is created; startActionMode() was called
-            @Override
-            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-                // Inflate a menu resource providing context menu items
-                MenuInflater inflater = mode.getMenuInflater();
-                inflater.inflate(R.menu.filtering_list_context_menu, menu);
-                return true;
-            }
-
-            // Called each time the action mode is shown. Always called after onCreateActionMode,
-            // but
-            // may be called multiple times if the mode is invalidated.
-            @Override
-            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-                return false; // Return false if nothing is done
-            }
-
-            // Called when the user selects a contextual menu item
-            @Override
-            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-                return false;
-            }
-
-            // Called when the user exits the action mode
-            @Override
-            public void onDestroyActionMode(ActionMode mode) {}
-        };
-        Activity mActivity;
-        int mSelectedCount;
+        final Context mContext;
+        LongSparseArray<Boolean> mSelectedIds = new LongSparseArray<Boolean>();
 
         public ListAdapter(Context context, int layout, Cursor c, String[] from, int[] to, int flags) {
             super(context, layout, c, from, to, flags);
-            mActivity = (Activity) context;
-            mOnLongClickListener = new OnLongClickListener() {
-
-                @Override
-                public boolean onLongClick(View v) {
-                    ViewInfo viewInfo = (ViewInfo) v.getTag();
-                    if (viewInfo.selected) {
-                        mSelectedCount--;
-                    } else {
-                        mSelectedCount++;
-                    }
-                    v.setSelected(viewInfo.selected = !viewInfo.selected);
-                    if (mSelectedCount > 0) {
-                        mActivity.startActionMode(mActionModeCallback);
-                    }
-                    return true;
-                }
-            };
+            mContext = context;
         }
+
         @Override
         public void bindView(View view, Context context, Cursor cursor) {
-            view.setOnLongClickListener(mOnLongClickListener);
-            Object tag = view.getTag();
-            if (tag != null) {
-                ViewInfo info = (ViewInfo) view.getTag();
-                view.setSelected(info.selected);
+            long id = cursor.getInt(cursor.getColumnIndex(Columns._ID));
+            if (mSelectedIds.get(id) == null || !mSelectedIds.get(id)) {
+                view.setBackgroundColor(mContext.getResources().getColor(android.R.color.white));
             } else {
-                view.setTag(new ViewInfo());
+                view.setBackgroundColor(mContext.getResources().getColor(R.color.highlighted_item));
             }
             TextView ipAddress = (TextView) view.findViewById(R.id.ip_address);
             ipAddress.setText(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.IP_ADDRESS)));

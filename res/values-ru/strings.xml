@@ -36,5 +36,8 @@
     <string name="ip_address">IP-адрес</string>
     <string name="invalid_ip_address">Невалидный IP-адрес</string>
     <string name="invalid_port_number">Невалидный номер порта</string>
+    
+    <!-- CAB -->
+    <string name="selected">Выбрано: %d</string>
 
 </resources>

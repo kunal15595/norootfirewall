@@ -69,7 +69,7 @@
     <string name="delete">Delete</string>
     <string name="add">Add</string>
     <string name="select_all">Select All</string>
-    
+
     <!-- Connection directions -->
     <string name="incoming">Incoming</string>
     <string name="outgoing">Outgoing</string>
@@ -81,5 +81,8 @@
     <string name="ip_address">IP address</string>
     <string name="invalid_ip_address">Invalid IP address</string>
     <string name="invalid_port_number">Invalid port number</string>
+    
+    <!-- CAB -->
+    <string name="selected">Выбрано: %d</string>
 
 </resources>

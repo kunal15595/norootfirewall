@@ -20,8 +20,7 @@
         android:id="@+id/filtering_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:choiceMode="multipleChoiceModal" />
+        android:layout_weight="1" />
 
     <TextView
         android:id="@+id/empty_filtering_list"
