@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.support.v4.util.LongSparseArray;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -23,6 +24,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnFocusChangeListener;
 import android.view.ViewGroup;
+import android.widget.AbsListView.MultiChoiceModeListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ArrayAdapter;
@@ -165,6 +167,38 @@ public class FilteringListActivity extends Activity {
                     new int[] { R.id.ip_address, R.id.port },
                     0);
             mFilteringListView.setAdapter(mAdapter);
+            mFilteringListView.setMultiChoiceModeListener(new MultiChoiceModeListener() {
+                
+                @Override
+                public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+                    // TODO Auto-generated method stub
+                    return false;
+                }
+                
+                @Override
+                public void onDestroyActionMode(ActionMode mode) {
+                    // TODO Auto-generated method stub
+                    
+                }
+                
+                @Override
+                public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+                    // TODO Auto-generated method stub
+                    return false;
+                }
+                
+                @Override
+                public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+                    // TODO Auto-generated method stub
+                    return false;
+                }
+                
+                @Override
+                public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
+                    // TODO Auto-generated method stub
+                    
+                }
+            });
             mFilteringListView.setOnItemLongClickListener(new OnItemLongClickListener() {
 
                 @Override
