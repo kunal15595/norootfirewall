@@ -13,9 +13,10 @@ import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.util.LongSparseArray;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
+import android.util.SparseArray;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -168,44 +169,40 @@ public class FilteringListActivity extends Activity {
                     0);
             mFilteringListView.setAdapter(mAdapter);
             mFilteringListView.setMultiChoiceModeListener(new MultiChoiceModeListener() {
-                
+
                 @Override
                 public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
                     // TODO Auto-generated method stub
+                    Log.d("mFilteringListView", "onPrepareActionMode");
                     return false;
                 }
-                
+
                 @Override
                 public void onDestroyActionMode(ActionMode mode) {
                     // TODO Auto-generated method stub
-                    
+                    Log.d("mFilteringListView", "onDestroyActionMode");
                 }
-                
+
                 @Override
                 public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-                    // TODO Auto-generated method stub
-                    return false;
+                    Log.d("mFilteringListView", "onCreateActionMode");
+                    getActivity().getMenuInflater().inflate(R.menu.filtering_list_context_menu, menu);
+                    return true;
                 }
-                
+
                 @Override
                 public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
                     // TODO Auto-generated method stub
+                    Log.d("mFilteringListView", "onActionItemClicked");
                     return false;
                 }
-                
-                @Override
-                public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
-                    // TODO Auto-generated method stub
-                    
-                }
-            });
-            mFilteringListView.setOnItemLongClickListener(new OnItemLongClickListener() {
 
                 @Override
-                public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                    if (mAdapter.mSelectedIds.get(id) == null || !mAdapter.mSelectedIds.get(id)) {
-                        mAdapter.mSelectedIds.put(id, true);
-                        view.setBackgroundColor(getActivity().getResources().getColor(R.color.highlighted_item));
+                public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
+                    Log.d("mFilteringListView", "onItemCheckedStateChanged: pos == " + position
+                            + " checked == " + checked);
+                    if (checked) {
+                        mAdapter.uncheckItem(position);
                     } else {
                         /*
                          * I don't put a false because there is no reason to store unselected items.
@@ -215,8 +212,20 @@ public class FilteringListActivity extends Activity {
                          * Maksim Dmitriev
                          * May 21, 2015
                          */
-                        mAdapter.mSelectedIds.remove(id);
-                        view.setBackgroundColor(getActivity().getResources().getColor(android.R.color.white));
+                        mAdapter.checkItem(position);
+                    }
+                }
+            });
+            mFilteringListView.setOnItemLongClickListener(new OnItemLongClickListener() {
+
+                @Override
+                public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                    if (mAdapter.isChecked(position)) {
+                        mFilteringListView.setItemChecked(position, false);
+                        mAdapter.uncheckItem(position);
+                    } else {
+                        mFilteringListView.setItemChecked(position, true);
+                        mAdapter.checkItem(position);
                     }
                     return true;
                 }
@@ -321,8 +330,8 @@ public class FilteringListActivity extends Activity {
             return convertView;
         }
     }
-    
-    // TODO: can I say, "Any enum"? If so, there is no need to have the two adapters: 
+
+    // TODO: can I say, "Any enum"? If so, there is no need to have the two adapters:
     // ConnectionPolicyAdapter and ConnectionDirectionAdapter
     private static class ConnectionPolicyAdapter extends ArrayAdapter<ConnectionPolicy> {
 
@@ -349,21 +358,42 @@ public class FilteringListActivity extends Activity {
     private static class ListAdapter extends SimpleCursorAdapter {
 
         final Context mContext;
-        LongSparseArray<Boolean> mSelectedIds = new LongSparseArray<Boolean>();
+        SparseArray<Boolean> mSelectedIds = new SparseArray<Boolean>();
 
         public ListAdapter(Context context, int layout, Cursor c, String[] from, int[] to, int flags) {
             super(context, layout, c, from, to, flags);
             mContext = context;
         }
 
+        private void uncheckItem(int pos) {
+            mSelectedIds.remove(pos);
+        }
+
+        private void checkItem(int pos) {
+            mSelectedIds.put(pos, true);
+        }
+
+        private void selectAll() {
+            int count = getCount();
+            for (int i = 0; i < count; i++) {
+                mSelectedIds.put(i, true);
+            }
+        }
+
+        private void deselectAll() {
+            int count = getCount();
+            for (int i = 0; i < count; i++) {
+                mSelectedIds.remove(i);
+            }
+        }
+
+        private boolean isChecked(int pos) {
+            return mSelectedIds.get(pos) == null ? false : mSelectedIds.get(pos);
+        }
+
         @Override
         public void bindView(View view, Context context, Cursor cursor) {
-            long id = cursor.getInt(cursor.getColumnIndex(Columns._ID));
-            if (mSelectedIds.get(id) == null || !mSelectedIds.get(id)) {
-                view.setBackgroundColor(mContext.getResources().getColor(android.R.color.white));
-            } else {
-                view.setBackgroundColor(mContext.getResources().getColor(R.color.highlighted_item));
-            }
+            // TODO: hightlight checked items
             TextView ipAddress = (TextView) view.findViewById(R.id.ip_address);
             ipAddress.setText(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.IP_ADDRESS)));
 
@@ -382,7 +412,7 @@ public class FilteringListActivity extends Activity {
             default:
                 throw new IllegalArgumentException("Illegal connection type: " + direction);
             }
-            
+
             ConnectionPolicy policy = ConnectionPolicy.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_POLICY)));
             ImageView policyIcon = (ImageView) view.findViewById(R.id.connection_policy);
             switch (policy) {
