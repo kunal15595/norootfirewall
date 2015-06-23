@@ -5,6 +5,9 @@
     <!-- pressed -->
     <item android:drawable="@android:color/holo_blue_light" android:state_focused="true"/>
     <!-- focused -->
-    <item android:drawable="@android:color/holo_blue_bright" android:state_selected="true"/>
+    <item android:drawable="@color/highlighted_item" android:state_checked="true"/>
+    <!-- checked -->
+    <item android:drawable="@android:color/white"/>
+    <!-- default -->
 
 </selector>

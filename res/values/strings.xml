@@ -38,11 +38,11 @@
     </string-array>
 
     <!-- CONNECTION PREFERENCES -->
-    <string name="connection_preference">Соединения</string>
+    <string name="connection_preference">Connection type</string>
     <string name="connection_preference_key" translatable="false">connection_preference_key</string>
     <!-- Human-readable titles -->
-    <string name="wifi_only">Только Wi-Fi</string>
-    <string name="wifi_and_mobile">Wi-Fi и мобильное подключение</string>
+    <string name="wifi_only">Wi-Fi only</string>
+    <string name="wifi_and_mobile">Wi-Fi and mobile data</string>
 
     <string-array name="connection_preference_titles">
         <item>@string/wifi_only</item>
@@ -51,8 +51,8 @@
 
     <!-- Summaries -->
     <string-array name="connection_preference_entries_summary">
-        <item>Только Wi-Fi</item>
-        <item>Wi-Fi и мобильное соединение</item>
+        <item>@string/wifi_only</item>
+        <item>@string/wifi_and_mobile</item>
     </string-array>
 
     <!-- Values -->
@@ -68,5 +68,25 @@
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
     <string name="add">Add</string>
-    
+    <string name="select_all">Select All</string>
+
+    <!-- Connection directions -->
+    <string name="incoming">Incoming</string>
+    <string name="outgoing">Outgoing</string>
+
+    <!-- Connection policy values -->
+    <string name="allowed">Allowed</string>
+    <string name="forbidden">Forbidden</string>
+
+    <!-- The Add dialog -->
+    <string name="add_new_policy">Add a new policy</string>
+    <string name="add_button">Add</string>
+    <string name="cancel">Cancel</string>
+    <string name="ip_address">IP address</string>
+    <string name="invalid_ip_address">Invalid IP address</string>
+    <string name="invalid_port_number">Invalid port number</string>
+
+    <!-- CAB -->
+    <string name="selected">Выбрано: %d</string>
+
 </resources>

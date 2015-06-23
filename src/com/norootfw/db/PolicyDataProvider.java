@@ -36,7 +36,9 @@ public class PolicyDataProvider extends ContentProvider {
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         switch (sUriMatcher.match(uri)) {
         case UriCodes.IP_PORT_TABLE:
-            return mPolicyDatabase.getReadableDatabase().query(Tables.IP_PORT_TABLE, projection, selection, selectionArgs, null, null, sortOrder);
+            Cursor cursor = mPolicyDatabase.getReadableDatabase().query(Tables.IP_PORT_TABLE, projection, selection, selectionArgs, null, null, sortOrder);
+            cursor.setNotificationUri(getContext().getContentResolver(), uri);
+            return cursor;
         default:
             throw new RuntimeException("Unsupported URI: " + uri);
         }
@@ -52,9 +54,7 @@ public class PolicyDataProvider extends ContentProvider {
         long id = -1;
         switch (sUriMatcher.match(uri)) {
         case UriCodes.IP_PORT_TABLE:
-            String filteringList = PrefUtils.getFilteringMode(getContext());
-            values.put(Columns.FILTERING_MODE, filteringList);
-            id = mPolicyDatabase.getWritableDatabase().insert(Tables.IP_PORT_TABLE, null, values);
+            id = mPolicyDatabase.getWritableDatabase().insertWithOnConflict(Tables.IP_PORT_TABLE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
             break;
         default:
             throw new RuntimeException("Unsupported URI: " + uri);
@@ -63,7 +63,9 @@ public class PolicyDataProvider extends ContentProvider {
             Log.w(LOG_TAG, "Failed to insert a new item");
             return null;
         } else {
-            return Uri.withAppendedPath(Uris.IP_PORT_TABLE, Long.toString(id));
+            Uri itemUri = Uri.withAppendedPath(Uris.IP_PORT_TABLE, Long.toString(id));
+            getContext().getContentResolver().notifyChange(itemUri, null);
+            return itemUri;
         }
     }
 
@@ -74,6 +76,8 @@ public class PolicyDataProvider extends ContentProvider {
             int deleted = mPolicyDatabase.getWritableDatabase().delete(Tables.IP_PORT_TABLE, selection, selectionArgs);
             if (deleted == 0) {
                 Log.w(LOG_TAG, "No items deleted");
+            } else {
+                getContext().getContentResolver().notifyChange(uri, null);
             }
             return deleted;
         default:
@@ -104,21 +108,16 @@ public class PolicyDataProvider extends ContentProvider {
         public void onCreate(SQLiteDatabase db) {
             db.execSQL("CREATE TABLE " + Tables.IP_PORT_TABLE
                     + " (" + Columns._ID + " INTEGER PRIMARY KEY, "
-                    + Columns.FILTERING_MODE + " TEXT NOT NULL, "
+                    + Columns.CONNECTION_POLICY + " TEXT NOT NULL, "
                     + Columns.IP_ADDRESS + " TEXT, "
                     + Columns.PORT + " INTEGER, "
-                    + Columns.CONNECTION_TYPE + " TEXT NOT NULL, "
+                    + Columns.CONNECTION_DIRECTION + " TEXT NOT NULL, "
 
-                    + "UNIQUE(" + Columns.IP_ADDRESS + ", " + Columns.PORT + ", " + Columns.CONNECTION_TYPE + "));");
+                    + "UNIQUE(" + Columns.IP_ADDRESS + ", " + Columns.PORT + ", " + Columns.CONNECTION_DIRECTION + "));");
         }
 
         @Override
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {}
-    }
-
-    public enum ConnectionType {
-        INCOMING,
-        OUTGOING
     }
 
     private static class Tables {
@@ -138,14 +137,11 @@ public class PolicyDataProvider extends ContentProvider {
         }
 
         public static final String IP_ADDRESS = "ip_address";
-        /** Black or white list
-         * <br />
-         * It is set automatically. DO NOT put it to content values when inserting a new item.
-         * 
+        /** Allowed or prohibited
          */
-        public static final String FILTERING_MODE = "filtering_mode";
+        public static final String CONNECTION_POLICY = "connection_policy";
         public static final String PORT = "port";
-        public static final String CONNECTION_TYPE = "connection_type";
+        public static final String CONNECTION_DIRECTION = "connection_direction";
     }
 
     private static class UriCodes {

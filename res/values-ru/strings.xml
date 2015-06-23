@@ -23,5 +23,25 @@
     <string name="edit">Редактировать</string>
     <string name="delete">Удалить</string>
     <string name="add">Добавить</string>
+    <string name="select_all">Выбрать все</string>
+
+    <!-- Connection directions -->
+    <string name="incoming">Входящее</string>
+    <string name="outgoing">Исходящее</string>
     
+    <!-- Connection policy values -->
+    <string name="allowed">Разрешено</string>
+    <string name="forbidden">Запрещено</string>
+
+    <!-- The Add dialog -->
+    <string name="add_new_policy">Добавить новую политику</string>
+    <string name="add_button">Добавить</string>
+    <string name="cancel">Отмена</string>
+    <string name="ip_address">IP-адрес</string>
+    <string name="invalid_ip_address">Невалидный IP-адрес</string>
+    <string name="invalid_port_number">Невалидный номер порта</string>
+    
+    <!-- CAB -->
+    <string name="selected">Выбрано: %d</string>
+
 </resources>

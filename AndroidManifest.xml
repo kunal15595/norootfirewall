@@ -25,7 +25,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="com.norootfw.gui.FilteringListActivity" />
+        <activity android:name="com.norootfw.gui.FilteringListActivity" 
+            android:configChanges="screenSize|orientation"/>
         <activity android:name="com.norootfw.gui.SecuritySettingsActivity" />
 
         <service

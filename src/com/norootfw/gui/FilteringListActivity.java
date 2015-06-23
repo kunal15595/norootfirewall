@@ -1,30 +1,48 @@
 package com.norootfw.gui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.LoaderManager;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.CursorLoader;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Loader;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
+import android.util.SparseArray;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnFocusChangeListener;
 import android.view.ViewGroup;
-import android.view.View.OnLongClickListener;
+import android.widget.AbsListView.MultiChoiceModeListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemLongClickListener;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.norootfw.R;
 import com.norootfw.db.PolicyDataProvider;
-import com.norootfw.db.PolicyDataProvider.ConnectionType;
-import com.norootfw.utils.PrefUtils;
+import com.norootfw.db.PolicyDataProvider.Columns;
+import com.norootfw.db.PolicyDataProvider.Uris;
+import com.norootfw.utils.ConnectionDirection;
+import com.norootfw.utils.ConnectionPolicy;
+import com.norootfw.utils.Utils;
 
 public class FilteringListActivity extends Activity {
 
@@ -43,15 +61,19 @@ public class FilteringListActivity extends Activity {
         private static final String[] COLUMNS = new String[] {
                 PolicyDataProvider.Columns.IP_ADDRESS,
                 PolicyDataProvider.Columns.PORT,
-                PolicyDataProvider.Columns.CONNECTION_TYPE,
+                PolicyDataProvider.Columns.CONNECTION_DIRECTION,
+                PolicyDataProvider.Columns.CONNECTION_POLICY,
                 PolicyDataProvider.Columns._ID
         };
+        private static final int MAX_PORT = 65535;
         private ListAdapter mAdapter;
-        private String mFilteringMode;
         private ListView mFilteringListView;
         private TextView mFilteringListEmpty;
         private TextView mFilteringListHeader;
-        
+        private AlertDialog mAddDialog;
+        private EditText mAddPortEditText;
+        private EditText mAddIpAddressEditText;
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View view = inflater.inflate(R.layout.fragment_filtering_list, container, false);
@@ -65,36 +87,164 @@ public class FilteringListActivity extends Activity {
         public void onActivityCreated(Bundle savedInstanceState) {
             super.onActivityCreated(savedInstanceState);
             setHasOptionsMenu(true);
-            mFilteringMode = PrefUtils.getFilteringMode(getActivity());
-            if (mFilteringMode.equals(getString(R.string.filtering_mode_black_list_value))) {
-                getActivity().setTitle(R.string.black_list_title);
-            } else if (mFilteringMode.equals(getString(R.string.filtering_mode_white_list_value))) {
-                getActivity().setTitle(R.string.white_list_title);
-            } else {
-                throw new IllegalArgumentException("Invalid filtering mode == " + mFilteringMode);
-            }
+
+            View addDialogView = LayoutInflater.from(getActivity()).inflate(R.layout.add_new_dialog, null);
+            mAddIpAddressEditText = (EditText) addDialogView.findViewById(R.id.add_ip_address);
+            mAddIpAddressEditText.addTextChangedListener(new TextWatcher() {
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    mAddDialog.getButton(DialogInterface.BUTTON_POSITIVE).setEnabled(isIpAddressValid(s.toString()) && isPortValid(mAddPortEditText.getText().toString()));
+                }
+            });
+            mAddIpAddressEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
+
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    if (!hasFocus) {
+                        EditText et = (EditText) v;
+                        if (!isIpAddressValid(et.getText().toString())) {
+                            et.setError(getString(R.string.invalid_ip_address));
+                        }
+                    }
+                }
+            });
+            mAddPortEditText = (EditText) addDialogView.findViewById(R.id.add_port);
+            mAddPortEditText.addTextChangedListener(new TextWatcher() {
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    mAddDialog.getButton(DialogInterface.BUTTON_POSITIVE).setEnabled(isIpAddressValid(s.toString()) && isPortValid(mAddIpAddressEditText.getText().toString()));
+                }
+            });
+            mAddPortEditText.setOnFocusChangeListener(new OnFocusChangeListener() {
+
+                @Override
+                public void onFocusChange(View v, boolean hasFocus) {
+                    if (!hasFocus) {
+                        EditText et = (EditText) v;
+                        if (!isPortValid(et.getText().toString())) {
+                            et.setError(getString(R.string.invalid_port_number));
+                        }
+                    }
+                }
+            });
+            final Spinner connectionDirectionSpinner = (Spinner) addDialogView.findViewById(R.id.add_connection_direction);
+            connectionDirectionSpinner.setAdapter(new ConnectionDirectionAdapter(getActivity(), android.R.layout.simple_list_item_1, ConnectionDirection.values()));
+            final Spinner connectionPolicySpinner = (Spinner) addDialogView.findViewById(R.id.add_connection_policy);
+            connectionPolicySpinner.setAdapter(new ConnectionPolicyAdapter(getActivity(), android.R.layout.simple_list_item_1, ConnectionPolicy.values()));
+            mAddDialog = new AlertDialog.Builder(getActivity())
+                    .setTitle(R.string.add_new_policy)
+                    .setView(addDialogView)
+                    .setPositiveButton(R.string.add, new OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            insertPolicy(mAddIpAddressEditText.getText().toString(),
+                                    Integer.parseInt(mAddPortEditText.getText().toString()),
+                                    (ConnectionDirection) connectionDirectionSpinner.getSelectedItem(),
+                                    (ConnectionPolicy) connectionPolicySpinner.getSelectedItem());
+                        }
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .create();
+
             mAdapter = new ListAdapter(getActivity(),
                     R.layout.filter_list_item,
                     null,
                     COLUMNS,
                     new int[] { R.id.ip_address, R.id.port },
                     0);
-            mFilteringListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
             mFilteringListView.setAdapter(mAdapter);
+            mFilteringListView.setMultiChoiceModeListener(new MultiChoiceModeListener() {
+
+                @Override
+                public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+                    // TODO Auto-generated method stub
+                    Log.d("mFilteringListView", "onPrepareActionMode");
+                    return false;
+                }
+
+                @Override
+                public void onDestroyActionMode(ActionMode mode) {
+                    // TODO Auto-generated method stub
+                    Log.d("mFilteringListView", "onDestroyActionMode");
+                }
+
+                @Override
+                public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+                    Log.d("mFilteringListView", "onCreateActionMode");
+                    getActivity().getMenuInflater().inflate(R.menu.filtering_list_context_menu, menu);
+                    return true;
+                }
+
+                @Override
+                public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+                    // TODO Auto-generated method stub
+                    Log.d("mFilteringListView", "onActionItemClicked");
+                    return false;
+                }
+
+                @Override
+                public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
+                    Log.d("mFilteringListView", "onItemCheckedStateChanged: pos == " + position
+                            + " checked == " + checked);
+                    if (checked) {
+                        mAdapter.uncheckItem(position);
+                    } else {
+                        /*
+                         * I don't put a false because there is no reason to store unselected items.
+                         * If the user selects and unselects items much, the hash table will grow
+                         * rapidly
+                         * 
+                         * Maksim Dmitriev
+                         * May 21, 2015
+                         */
+                        mAdapter.checkItem(position);
+                    }
+                }
+            });
+            mFilteringListView.setOnItemLongClickListener(new OnItemLongClickListener() {
+
+                @Override
+                public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                    if (mAdapter.isChecked(position)) {
+                        mFilteringListView.setItemChecked(position, false);
+                        mAdapter.uncheckItem(position);
+                    } else {
+                        mFilteringListView.setItemChecked(position, true);
+                        mAdapter.checkItem(position);
+                    }
+                    return true;
+                }
+            });
             getLoaderManager().initLoader(LOADER_ID, null, this);
         }
-        
+
         @Override
         public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
             super.onCreateOptionsMenu(menu, inflater);
             inflater.inflate(R.menu.filtering_list_menu, menu);
         }
-        
+
         @Override
         public boolean onOptionsItemSelected(MenuItem item) {
             switch (item.getItemId()) {
             case R.id.item_add:
-                // TODO
+                mAddDialog.show();
+                mAddDialog.getButton(DialogInterface.BUTTON_POSITIVE).setEnabled(false);
                 return true;
 
             default:
@@ -108,8 +258,8 @@ public class FilteringListActivity extends Activity {
             case LOADER_ID:
                 return new CursorLoader(getActivity(),
                         PolicyDataProvider.Uris.IP_PORT_TABLE, COLUMNS,
-                        PolicyDataProvider.Columns.FILTERING_MODE + "=?",
-                        new String[] { mFilteringMode },
+                        null,
+                        null,
                         null);
             }
             return null;
@@ -133,76 +283,147 @@ public class FilteringListActivity extends Activity {
         public void onLoaderReset(Loader<Cursor> loader) {
             mAdapter.swapCursor(null);
         }
+
+        private boolean isIpAddressValid(String ipAddress) {
+            return ipAddress.matches(Utils.IP_ADDRESS_PATTERN);
+        }
+
+        private boolean isPortValid(String port) {
+            boolean valid = false;
+            try {
+                valid = Integer.parseInt(port) <= MAX_PORT;
+            } catch (NumberFormatException e) {}
+            return valid;
+        }
+
+        private void insertPolicy(String ipAddress, int port, ConnectionDirection direction, ConnectionPolicy policy) {
+            ContentValues values = new ContentValues();
+            values.put(Columns.IP_ADDRESS, ipAddress);
+            values.put(Columns.PORT, port);
+            values.put(Columns.CONNECTION_DIRECTION, direction.name());
+            values.put(Columns.CONNECTION_POLICY, policy.name());
+            Uri itemUri = getActivity().getContentResolver().insert(Uris.IP_PORT_TABLE, values);
+            if (itemUri == null) {
+                throw new RuntimeException("Failed to insert a new policy");
+            }
+        }
+    }
+
+    private static class ConnectionDirectionAdapter extends ArrayAdapter<ConnectionDirection> {
+
+        LayoutInflater mInflater;
+        final int mRes;
+
+        public ConnectionDirectionAdapter(Context context, int resource, ConnectionDirection[] objects) {
+            super(context, resource, objects);
+            mInflater = LayoutInflater.from(context);
+            mRes = resource;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            if (convertView == null) {
+                convertView = mInflater.inflate(mRes, parent, false);
+            }
+            TextView text = (TextView) convertView.findViewById(android.R.id.text1);
+            text.setText(ConnectionDirection.values()[position].getTitle());
+            return convertView;
+        }
+    }
+
+    // TODO: can I say, "Any enum"? If so, there is no need to have the two adapters:
+    // ConnectionPolicyAdapter and ConnectionDirectionAdapter
+    private static class ConnectionPolicyAdapter extends ArrayAdapter<ConnectionPolicy> {
+
+        LayoutInflater mInflater;
+        final int mRes;
+
+        public ConnectionPolicyAdapter(Context context, int resource, ConnectionPolicy[] objects) {
+            super(context, resource, objects);
+            mInflater = LayoutInflater.from(context);
+            mRes = resource;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            if (convertView == null) {
+                convertView = mInflater.inflate(mRes, parent, false);
+            }
+            TextView text = (TextView) convertView.findViewById(android.R.id.text1);
+            text.setText(ConnectionPolicy.values()[position].getTitle());
+            return convertView;
+        }
     }
 
     private static class ListAdapter extends SimpleCursorAdapter {
 
-        OnLongClickListener mOnLongClickListener = null;
-        private ActionMode.Callback mActionModeCallback = new ActionMode.Callback() {
-
-            // Called when the action mode is created; startActionMode() was called
-            @Override
-            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-                // Inflate a menu resource providing context menu items
-                MenuInflater inflater = mode.getMenuInflater();
-                inflater.inflate(R.menu.filtering_list_context_menu, menu);
-                return true;
-            }
-
-            // Called each time the action mode is shown. Always called after onCreateActionMode,
-            // but
-            // may be called multiple times if the mode is invalidated.
-            @Override
-            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-                return false; // Return false if nothing is done
-            }
-
-            // Called when the user selects a contextual menu item
-            @Override
-            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-                return false;
-            }
-
-            // Called when the user exits the action mode
-            @Override
-            public void onDestroyActionMode(ActionMode mode) {}
-        };
-        Activity mActivity;
+        final Context mContext;
+        SparseArray<Boolean> mSelectedIds = new SparseArray<Boolean>();
 
         public ListAdapter(Context context, int layout, Cursor c, String[] from, int[] to, int flags) {
             super(context, layout, c, from, to, flags);
-            mActivity = (Activity) context;
-            mOnLongClickListener = new OnLongClickListener() {
+            mContext = context;
+        }
 
-                @Override
-                public boolean onLongClick(View v) {
-                    mActivity.startActionMode(mActionModeCallback);
-                    v.setSelected(true);
-                    return true;
-                }
-            };
+        private void uncheckItem(int pos) {
+            mSelectedIds.remove(pos);
+        }
+
+        private void checkItem(int pos) {
+            mSelectedIds.put(pos, true);
+        }
+
+        private void selectAll() {
+            int count = getCount();
+            for (int i = 0; i < count; i++) {
+                mSelectedIds.put(i, true);
+            }
+        }
+
+        private void deselectAll() {
+            int count = getCount();
+            for (int i = 0; i < count; i++) {
+                mSelectedIds.remove(i);
+            }
+        }
+
+        private boolean isChecked(int pos) {
+            return mSelectedIds.get(pos) == null ? false : mSelectedIds.get(pos);
         }
 
         @Override
         public void bindView(View view, Context context, Cursor cursor) {
-            view.setOnLongClickListener(mOnLongClickListener);
+            // TODO: hightlight checked items
             TextView ipAddress = (TextView) view.findViewById(R.id.ip_address);
             ipAddress.setText(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.IP_ADDRESS)));
 
             TextView port = (TextView) view.findViewById(R.id.port);
             port.setText(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.PORT)));
 
-            ConnectionType connectionType = ConnectionType.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_TYPE)));
-            ImageView icon = (ImageView) view.findViewById(R.id.connection_type);
-            switch (connectionType) {
+            ConnectionDirection direction = ConnectionDirection.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_DIRECTION)));
+            ImageView directionIcon = (ImageView) view.findViewById(R.id.connection_direction);
+            switch (direction) {
             case INCOMING:
-                icon.setImageResource(R.drawable.ico_download);
+                directionIcon.setImageResource(R.drawable.ico_download);
                 break;
             case OUTGOING:
-                icon.setImageResource(R.drawable.ico_upload);
+                directionIcon.setImageResource(R.drawable.ico_upload);
                 break;
             default:
-                throw new IllegalArgumentException("Illegal connection type: " + connectionType);
+                throw new IllegalArgumentException("Illegal connection type: " + direction);
+            }
+
+            ConnectionPolicy policy = ConnectionPolicy.valueOf(cursor.getString(cursor.getColumnIndex(PolicyDataProvider.Columns.CONNECTION_POLICY)));
+            ImageView policyIcon = (ImageView) view.findViewById(R.id.connection_policy);
+            switch (policy) {
+            case ALLOWED:
+                policyIcon.setImageResource(R.drawable.connection_allowed);
+                break;
+            case FORBIDDEN:
+                policyIcon.setImageResource(R.drawable.connection_forbidden);
+                break;
+            default:
+                throw new IllegalArgumentException("Illegal connection type: " + direction);
             }
         }
     }
